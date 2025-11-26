@@ -1,3 +1,15 @@
-## 0.0.1
-
-* TODO: Describe initial release.
+## 0.1.0
+* Initial release of HiveHook
+* Hook system for intercepting Hive operations (pre/post execution)
+* Plugin architecture for composable, reusable middleware
+* Action hooks for validation, logging, and custom logic
+* Serialization hooks for data transformation (encryption, compression, JSON)
+* Built-in TTL plugin for automatic data expiration
+* Built-in LRU plugin for size-limited caching with automatic eviction
+* Metadata support for storing additional context alongside values
+* Control flow management (break, skip, delete operations)
+* Type-safe API with comprehensive error handling
+* Support for multiple isolated environments
+* Web platform support via Hive CE
+* Interactive web demo showcasing all features
+* Complete test coverage
