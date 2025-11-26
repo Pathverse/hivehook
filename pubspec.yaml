@@ -1,0 +1,14 @@
+name: hivehook
+description: "A new Flutter package project."
+version: 0.0.1
+homepage: https://dart.dev/
+
+environment:
+  sdk: ^3.9.2
+
+
+dependencies:
+  hive_ce: any
+
+dev_dependencies:
+  test: ^1.28.0
