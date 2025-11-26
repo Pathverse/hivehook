@@ -8,6 +8,20 @@ class HiveBase {
 
   static HiveCipher? HIVE_CIPHER = null;
 
+  static String _hiveBoxCollectionName = 'hivehooks';
+  static String get HIVE_BOX_COLLECTION_NAME => _hiveBoxCollectionName;
+  static set HIVE_BOX_COLLECTION_NAME(String value) {
+    if (_hiveBoxCollectionName != value) {
+      _hiveBoxCollectionName = value;
+      // Reset hive state when collection name changes
+      _openedBoxes.clear();
+      _hiveBoxCollection = null;
+      _alreadyInitialized = false;
+      // Note: We do NOT clear configs - they are still valid,
+      // just need to be re-registered with new collection
+    }
+  }
+
   static BoxCollection? _hiveBoxCollection;
 
   static bool _alreadyInitialized = false;
@@ -17,7 +31,8 @@ class HiveBase {
   static Future<CollectionBox<String>> getBox(String env) async {
     if (_hiveBoxCollection == null) {
       throw StateError(
-          'HiveBase is not initialized. Please call HiveBase.initialize() first.');
+        'HiveBase is not initialized. Please call HiveBase.initialize() first.',
+      );
     }
     if (_openedBoxes.containsKey(env)) {
       return _openedBoxes[env]!;
@@ -57,12 +72,30 @@ class HiveBase {
     }
 
     _hiveBoxCollection = await BoxCollection.open(
-      "hivehooks",
+      _hiveBoxCollectionName,
       boxes.toSet(),
       path: HIVE_INIT_PATH,
       key: HIVE_CIPHER,
     );
+  }
 
+  static Future<void> dispose(String env) async {
+    if (_hiveBoxCollection == null) {
+      return;
+    }
+    final store = await getBox(env);
+    await store.flush();
+    if (_openedBoxes.containsKey(env)) {
+      _openedBoxes.remove(env);
+    }
 
+    final metaStore = await getMetaBox(env);
+    if (metaStore != null) {
+      await metaStore.flush();
+      final metaBoxName = '_meta_$env';
+      if (_openedBoxes.containsKey(metaBoxName)) {
+        _openedBoxes.remove(metaBoxName);
+      }
+    }
   }
 }

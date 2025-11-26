@@ -4,8 +4,8 @@ class HHPayload {
   final dynamic value;
   final Map<String, dynamic>? metadata;
 
-  HHPayload({this.env, this.key, this.value, required Map<String, dynamic> metadata})
-    : metadata = Map.unmodifiable(metadata);
+  HHPayload({this.env, this.key, this.value, Map<String, dynamic>? metadata})
+    : metadata = Map.unmodifiable(metadata ?? {});
 
   HHPayload copyWith({
     String? env,

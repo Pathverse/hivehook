@@ -8,7 +8,8 @@ enum TriggerType {
   onClear,
   
   onIterate,
- 
+  
+  metadataRead,
   metadataWrite,
   valueRead,
   valueWrite,

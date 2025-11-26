@@ -98,6 +98,7 @@ abstract class HHCtxI {
   HHPayload payload;
 
   String get env;
+  dynamic get config;
 
   HHCtxI(HHPayload? initialPayload)
     : initialPayload = HHImmutablePayload(

@@ -1,0 +1,9 @@
+# Configuration for dart test
+# Run tests in a single isolate to avoid Hive multi-isolate issues
+platforms:
+  - vm
+  
+concurrency: 1
+
+# Optionally set a custom timeout
+timeout: 30s

@@ -79,6 +79,9 @@ class HHCtxControl extends HHCtxControlI {
       // Execute pre-action hooks
       if (!skipNextBatch) {
         final preHooks = ctx.config.preActionHooks[eventName] ?? [];
+        // print(
+        //   'DEBUG: Executing $eventName - preHooks count: ${preHooks.length}',
+        // );
         for (var hook in preHooks) {
           try {
             await invoke(hook.action, handleCtrlException);
@@ -175,185 +178,173 @@ class HHCtxDirectAccess extends HHCtxDirectAccessI {
 
   @override
   Future<dynamic> storeGet(String key) async {
-    return await ctx.control.emit(
-      TriggerType.valueRead.name,
+    final box = await store;
+    final rawResult = await box.get(key);
+
+    if (rawResult == null) return null;
+
+    // Terminal deserialization first
+    String valueStr = await ctx.control.emit(
+      TriggerType.onValueTDeserialize.name,
       action: (ctx) async {
-        final box = await store;
-        final rawResult = await box.get(key);
-
-        if (rawResult == null) return null;
-
-        // Terminal deserialization first
-        String valueStr = await ctx.control.emit(
-          TriggerType.onValueTDeserialize.name,
-          action: (ctx) async {
-            String result = rawResult;
-            for (var hook in this.ctx.config.storeTerminalSerializationHooks) {
-              result = await hook.deserialize(result, ctx);
-            }
-            return result;
-          },
-        );
-
-        // Then apply serialization hooks
-        final deserializedValue = await ctx.control.emit(
-          TriggerType.onValueDeserialize.name,
-          action: (ctx) async {
-            String result = valueStr;
-            for (var hook in this.ctx.config.storeSerializationHooks) {
-              if (hook.canHandle != null && !await hook.canHandle!(ctx)) {
-                continue;
-              }
-              try {
-                result = await hook.deserialize(ctx);
-              } catch (e) {
-                if (!hook.silentOnError) rethrow;
-                if (hook.onError != null) await hook.onError!(ctx);
-              }
-            }
-            return result;
-          },
-        );
-
-        return deserializedValue;
+        String result = rawResult;
+        for (var hook in this.ctx.config.storeTerminalSerializationHooks) {
+          result = await hook.deserialize(result, ctx);
+        }
+        return result;
       },
     );
+
+    // Then apply serialization hooks
+    final deserializedValue = await ctx.control.emit(
+      TriggerType.onValueDeserialize.name,
+      action: (ctx) async {
+        String result = valueStr;
+        for (var hook in this.ctx.config.storeSerializationHooks) {
+          if (hook.canHandle != null && !await hook.canHandle!(ctx)) {
+            continue;
+          }
+          try {
+            // Update payload so hook can read the current value
+            ctx.payload = ctx.payload.copyWith(value: result);
+            result = await hook.deserialize(ctx);
+          } catch (e) {
+            if (!hook.silentOnError) rethrow;
+            if (hook.onError != null) await hook.onError!(ctx);
+          }
+        }
+        return result;
+      },
+    );
+
+    return deserializedValue;
   }
 
   @override
   Future<void> storePut(String key, dynamic value) async {
-    await ctx.control.emit(
-      TriggerType.valueWrite.name,
+    // Apply serialization hooks first
+    String serializedValue = await ctx.control.emit(
+      TriggerType.onValueSerialize.name,
       action: (ctx) async {
-        // Apply serialization hooks first
-        String serializedValue = await ctx.control.emit(
-          TriggerType.onValueSerialize.name,
-          action: (ctx) async {
-            String result = value.toString();
-            for (var hook in this.ctx.config.storeSerializationHooks) {
-              if (hook.canHandle != null && !await hook.canHandle!(ctx)) {
-                continue;
-              }
-              try {
-                result = await hook.serialize(ctx);
-              } catch (e) {
-                if (!hook.silentOnError) rethrow;
-                if (hook.onError != null) await hook.onError!(ctx);
-              }
-            }
-            return result;
-          },
-        );
-
-        // Then apply terminal serialization
-        String finalValue = await ctx.control.emit(
-          TriggerType.onValueTSerialize.name,
-          action: (ctx) async {
-            String result = serializedValue;
-            for (var hook in this.ctx.config.storeTerminalSerializationHooks) {
-              result = await hook.serialize(result, ctx);
-            }
-            return result;
-          },
-        );
-
-        final box = await store;
-        await box.put(key, finalValue);
+        String result = value.toString();
+        for (var hook in this.ctx.config.storeSerializationHooks) {
+          if (hook.canHandle != null && !await hook.canHandle!(ctx)) {
+            continue;
+          }
+          try {
+            // Update payload so hook can read the current value
+            ctx.payload = ctx.payload.copyWith(value: result);
+            result = await hook.serialize(ctx);
+          } catch (e) {
+            if (!hook.silentOnError) rethrow;
+            if (hook.onError != null) await hook.onError!(ctx);
+          }
+        }
+        return result;
       },
     );
+
+    // Then apply terminal serialization
+    String finalValue = await ctx.control.emit(
+      TriggerType.onValueTSerialize.name,
+      action: (ctx) async {
+        String result = serializedValue;
+        for (var hook in this.ctx.config.storeTerminalSerializationHooks) {
+          result = await hook.serialize(result, ctx);
+        }
+        return result;
+      },
+    );
+
+    final box = await store;
+    await box.put(key, finalValue);
   }
 
   @override
   Future<Map<String, dynamic>?> metaGet(String key) async {
-    return await ctx.control.emit(
-      TriggerType.metadataWrite.name,
+    final box = await meta;
+    if (box == null) return null;
+
+    final rawResult = await box.get(key);
+    if (rawResult == null) return null;
+
+    // Terminal deserialization first
+    String metaStr = await ctx.control.emit(
+      TriggerType.onMetaTDeserialize.name,
       action: (ctx) async {
-        final box = await meta;
-        if (box == null) return null;
-
-        final rawResult = await box.get(key);
-        if (rawResult == null) return null;
-
-        // Terminal deserialization first
-        String metaStr = await ctx.control.emit(
-          TriggerType.onMetaTDeserialize.name,
-          action: (ctx) async {
-            String result = rawResult;
-            for (var hook in this.ctx.config.metaTerminalSerializationHooks) {
-              result = await hook.deserialize(result, ctx);
-            }
-            return result;
-          },
-        );
-
-        // Then apply serialization hooks
-        final deserializedMeta = await ctx.control.emit(
-          TriggerType.onMetaDeserialize.name,
-          action: (ctx) async {
-            String result = metaStr;
-            for (var hook in this.ctx.config.metaSerializationHooks) {
-              if (hook.canHandle != null && !await hook.canHandle!(ctx)) {
-                continue;
-              }
-              try {
-                result = await hook.deserialize(ctx);
-              } catch (e) {
-                if (!hook.silentOnError) rethrow;
-                if (hook.onError != null) await hook.onError!(ctx);
-              }
-            }
-            return jsonDecode(result) as Map<String, dynamic>;
-          },
-        );
-
-        return deserializedMeta;
+        String result = rawResult;
+        for (var hook in this.ctx.config.metaTerminalSerializationHooks) {
+          result = await hook.deserialize(result, ctx);
+        }
+        return result;
       },
     );
+
+    // Then apply serialization hooks
+    final deserializedMeta = await ctx.control.emit(
+      TriggerType.onMetaDeserialize.name,
+      action: (ctx) async {
+        String result = metaStr;
+        for (var hook in this.ctx.config.metaSerializationHooks) {
+          if (hook.canHandle != null && !await hook.canHandle!(ctx)) {
+            continue;
+          }
+          try {
+            // Update payload so hook can read the current value
+            ctx.payload = ctx.payload.copyWith(value: result);
+            result = await hook.deserialize(ctx);
+          } catch (e) {
+            if (!hook.silentOnError) rethrow;
+            if (hook.onError != null) await hook.onError!(ctx);
+          }
+        }
+        return jsonDecode(result) as Map<String, dynamic>;
+      },
+    );
+
+    return deserializedMeta;
   }
 
   @override
   Future<void> metaPut(String key, Map<String, dynamic> value) async {
-    await ctx.control.emit(
-      TriggerType.metadataWrite.name,
+    final box = await meta;
+    if (box == null) return;
+
+    // Apply serialization hooks first
+    String serializedMeta = await ctx.control.emit(
+      TriggerType.onMetaSerialize.name,
       action: (ctx) async {
-        final box = await meta;
-        if (box == null) return;
-
-        // Apply serialization hooks first
-        String serializedMeta = await ctx.control.emit(
-          TriggerType.onMetaSerialize.name,
-          action: (ctx) async {
-            String result = jsonEncode(value);
-            for (var hook in this.ctx.config.metaSerializationHooks) {
-              if (hook.canHandle != null && !await hook.canHandle!(ctx)) {
-                continue;
-              }
-              try {
-                result = await hook.serialize(ctx);
-              } catch (e) {
-                if (!hook.silentOnError) rethrow;
-                if (hook.onError != null) await hook.onError!(ctx);
-              }
-            }
-            return result;
-          },
-        );
-
-        // Then apply terminal serialization
-        String finalMeta = await ctx.control.emit(
-          TriggerType.onMetaTSerialize.name,
-          action: (ctx) async {
-            String result = serializedMeta;
-            for (var hook in this.ctx.config.metaTerminalSerializationHooks) {
-              result = await hook.serialize(result, ctx);
-            }
-            return result;
-          },
-        );
-
-        await box.put(key, finalMeta);
+        String result = jsonEncode(value);
+        for (var hook in this.ctx.config.metaSerializationHooks) {
+          if (hook.canHandle != null && !await hook.canHandle!(ctx)) {
+            continue;
+          }
+          try {
+            // Update payload so hook can read the current value
+            ctx.payload = ctx.payload.copyWith(value: result);
+            result = await hook.serialize(ctx);
+          } catch (e) {
+            if (!hook.silentOnError) rethrow;
+            if (hook.onError != null) await hook.onError!(ctx);
+          }
+        }
+        return result;
       },
     );
+
+    // Then apply terminal serialization
+    String finalMeta = await ctx.control.emit(
+      TriggerType.onMetaTSerialize.name,
+      action: (ctx) async {
+        String result = serializedMeta;
+        for (var hook in this.ctx.config.metaTerminalSerializationHooks) {
+          result = await hook.serialize(result, ctx);
+        }
+        return result;
+      },
+    );
+
+    await box.put(key, finalMeta);
   }
 
   @override
