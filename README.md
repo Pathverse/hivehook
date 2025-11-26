@@ -1,39 +1,272 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# HiveHook
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages).
+A powerful plugin system for [Hive](https://pub.dev/packages/hive_ce) that adds hooks, lifecycle management, and middleware capabilities to your NoSQL database operations.
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages).
--->
+## Why HiveHook?
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+Centralize cross-cutting concerns like validation, logging, caching, and encryption with a clean, composable hook system instead of scattering logic throughout your database code.
+
+## Quick Start
+
+```dart
+import 'package:hivehook/hivehook.dart';
+
+final config = HHConfig(env: 'myapp', usesMeta: true);
+final hive = HHive(config: config.finalize());
+
+await hive.put('user', 'John');
+final user = await hive.get('user');
+```
+
+## Common Use Cases
+
+### Automatic Data Expiration (TTL)
+
+```dart
+import 'package:hivehook/templates/ttl_plugin.dart';
+
+final ttlPlugin = createTTLPlugin(defaultTTLSeconds: 3600); // 1 hour
+
+final config = HHConfig(env: 'cache', usesMeta: true);
+config.installPlugin(ttlPlugin);
+final hive = HHive(config: config.finalize());
+
+await hive.put('session', sessionData); // Expires after 1 hour
+await hive.put('token', jwt, meta: {'ttl': '300'}); // Custom 5-min TTL
+```
+
+### LRU Cache
+
+```dart
+import 'package:hivehook/templates/lru_plugin.dart';
+
+final lruPlugin = createLRUPlugin(maxSize: 100);
+
+final config = HHConfig(env: 'cache', usesMeta: true);
+config.installPlugin(lruPlugin);
+final hive = HHive(config: config.finalize());
+
+// Automatically evicts least recently used items when full
+await hive.put('data1', value1);
+```
+
+### Validation
+
+```dart
+final config = HHConfig(
+  env: 'users',
+  usesMeta: true,
+  actionHooks: [
+    HActionHook(
+      latches: [HHLatch.pre(triggerType: TriggerType.valueWrite)],
+      action: (ctx) async {
+        if (ctx.payload.value == null || ctx.payload.value.isEmpty) {
+          throw ArgumentError('Value cannot be empty');
+        }
+      },
+    ),
+  ],
+);
+```
+
+### Audit Logging
+
+```dart
+final auditLog = <String>[];
+
+final config = HHConfig(
+  env: 'production',
+  usesMeta: true,
+  actionHooks: [
+    HActionHook(
+      latches: [HHLatch(triggerType: TriggerType.valueWrite, isPost: true)],
+      action: (ctx) async {
+        auditLog.add('Written: ${ctx.payload.key} at ${DateTime.now()}');
+      },
+    ),
+  ],
+);
+```
+
+### Data Encryption
+
+```dart
+final config = HHConfig(
+  env: 'secure',
+  usesMeta: true,
+  serializationHooks: [
+    SerializationHook(
+      serialize: (ctx) async => encrypt(ctx.payload.value),
+      deserialize: (ctx) async => decrypt(ctx.payload.value),
+    ),
+  ],
+);
+```
+
+### JSON Transformation
+
+```dart
+final config = HHConfig(
+  env: 'api',
+  usesMeta: true,
+  serializationHooks: [
+    SerializationHook(
+      serialize: (ctx) async => jsonEncode(ctx.payload.value),
+      deserialize: (ctx) async => jsonDecode(ctx.payload.value),
+    ),
+  ],
+);
+
+await hive.put('user', {'name': 'John', 'age': 30});
+final user = await hive.get('user'); // Returns Map
+```
+
+## Creating Custom Plugins
+
+```dart
+import 'package:hivehook/helper/plugin.dart';
+
+HHPlugin createCompressionPlugin() {
+  return HHPlugin(
+    serializationHooks: [
+      SerializationHook(
+        serialize: (ctx) async => compress(ctx.payload.value),
+        deserialize: (ctx) async => decompress(ctx.payload.value),
+      ),
+    ],
+  );
+}
+
+// Use it
+final config = HHConfig(env: 'app', usesMeta: true);
+config.installPlugin(createCompressionPlugin());
+
+// Remove it later
+config.uninstallPlugin(plugin.uid);
+```
+
+## Combining Plugins
+
+```dart
+final config = HHConfig(env: 'cache', usesMeta: true);
+
+config.installPlugin(createTTLPlugin(defaultTTLSeconds: 300));
+config.installPlugin(createLRUPlugin(maxSize: 50));
+config.installPlugin(createCompressionPlugin());
+
+final hive = HHive(config: config.finalize());
+
+// All plugins work together automatically
+await hive.put('data', largeObject);
+// → Compressed, TTL tracked, LRU managed
+```
+
+## Hook Types
+
+**Action Hooks** - Execute logic before/after operations:
+```dart
+HActionHook(
+  latches: [HHLatch.pre(triggerType: TriggerType.valueWrite)],
+  action: (ctx) async { /* your logic */ },
+)
+```
+
+**Serialization Hooks** - Transform data:
+```dart
+SerializationHook(
+  serialize: (ctx) async => transform(ctx.payload.value),
+  deserialize: (ctx) async => reverseTransform(ctx.payload.value),
+)
+```
+
+## Trigger Types
+
+- `valueWrite` - Data write operations
+- `valueRead` - Data read operations  
+- `onDelete` - Delete operations
+- `onPop` - Pop (read + delete) operations
+- `onClear` - Clear all operations
+- `metadataWrite` / `metadataRead` - Metadata operations
+
+## Control Flow
+
+```dart
+// Stop execution and return value
+throw HHCtrlException(
+  nextPhase: NextPhase.f_break,
+  returnValue: null,
+);
+
+// Skip remaining hooks
+throw HHCtrlException(nextPhase: NextPhase.f_skip);
+
+// Delete key and stop
+throw HHCtrlException(nextPhase: NextPhase.f_delete);
+```
+
+## Metadata
+
+```dart
+// Store additional info
+await hive.put('key', 'value', meta: {
+  'created_at': DateTime.now().toIso8601String(),
+  'author': 'user123',
+});
+
+// Read metadata
+final meta = await hive.getMeta('key');
+```
+
+## Installation
+
+```yaml
+dependencies:
+  hivehook: ^1.0.0
+  hive_ce: ^2.0.0
+```
+
+```dart
+import 'package:hivehook/core/base.dart';
+
+void main() async {
+  await HiveBase.initialize();
+  // Use HiveHook
+}
+```
+
+## Documentation
+
+- [Plugin Flow Guide](docs/plugin_flow.md) - How plugins work internally
+- Template Plugins:
+  - [TTL Plugin](lib/templates/ttl_plugin.dart) - Time-based expiration
+  - [LRU Plugin](lib/templates/lru_plugin.dart) - Size-limited cache
 
 ## Features
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+✅ Hook system for intercepting operations  
+✅ Plugin architecture for reusable logic  
+✅ Metadata support for additional context  
+✅ Control flow management  
+✅ Type-safe API  
+✅ Comprehensive test coverage  
 
-## Getting started
+## When to Use
 
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+**Use HiveHook for:**
+- Automatic data expiration
+- Size-limited caches
+- Data validation
+- Encryption/decryption
+- Audit logging
+- Data transformation
+- Rate limiting
+- Any cross-cutting concerns
 
-## Usage
+**Use plain Hive for:**
+- Simple key-value storage
+- No middleware needed
+- Maximum performance critical
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
+## License
 
-```dart
-const like = 'sample';
-```
-
-## Additional information
-
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+MIT
