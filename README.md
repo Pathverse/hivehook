@@ -236,9 +236,20 @@ void main() async {
 }
 ```
 
+## Live Demo
+
+🌐 **[Try HiveHook in your browser!](example/web/)** - Interactive web demo showcasing all features:
+- TTL Plugin with auto-expiration
+- LRU Cache with eviction
+- Custom hooks (validation + logging)
+- Combined plugins working together
+
+[See the example code →](example/web/main.dart)
+
 ## Documentation
 
 - [Plugin Flow Guide](docs/plugin_flow.md) - How plugins work internally
+- [Web Example](example/web/README.md) - Interactive browser demo
 - Template Plugins:
   - [TTL Plugin](lib/templates/ttl_plugin.dart) - Time-based expiration
   - [LRU Plugin](lib/templates/lru_plugin.dart) - Size-limited cache
