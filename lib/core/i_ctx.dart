@@ -8,8 +8,8 @@ class HHCtrlException implements Exception {
   HHCtrlException({
     this.nextPhase = NextPhase.f_break,
     this.returnValue,
-    required Map<String, dynamic> runtimeMeta,
-  }) : runtimeMeta = Map.unmodifiable(runtimeMeta);
+    Map<String, dynamic>? runtimeMeta,
+  }) : runtimeMeta = Map.unmodifiable(runtimeMeta ?? {});
 }
 
 class HHRuntimeException implements Exception {
