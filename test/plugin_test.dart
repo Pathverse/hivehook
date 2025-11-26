@@ -11,7 +11,7 @@ void main() {
   late List<String> executionLog;
 
   setUpAll(() async {
-    // Initialize test configs BEFORE HiveBase.initialize() so box names are registered
+    // Initialize test configs BEFORE HHiveCore.initialize() so box names are registered
     // These placeholder configs will be replaced with actual hooks via dangerousReplaceConfig
     HHImmutableConfig(env: 'plugin_install', usesMeta: true);
     HHImmutableConfig(env: 'plugin_duplicate', usesMeta: true);
@@ -21,7 +21,7 @@ void main() {
     HHImmutableConfig(env: 'plugin_uninstall', usesMeta: true);
     HHImmutableConfig(env: 'plugin_multiple', usesMeta: true);
 
-    await HiveBase.initialize();
+    await HHiveCore.initialize();
   });
 
   setUp(() async {

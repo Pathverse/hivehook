@@ -14,12 +14,12 @@ void main() {
   setUpAll(() async {
     // One temp directory and collection for ALL tests
     tempDir = await Directory.systemTemp.createTemp('hivehook_all_tests_');
-    HiveBase.HIVE_INIT_PATH = tempDir.path;
-    HiveBase.HIVE_BOX_COLLECTION_NAME = 'all_tests';
+    HHiveCore.HIVE_INIT_PATH = tempDir.path;
+    HHiveCore.HIVE_BOX_COLLECTION_NAME = 'all_tests';
 
     // Initialize all configs once
     initializeAllTestConfigs();
-    await HiveBase.initialize();
+    await HHiveCore.initialize();
   });
 
   tearDownAll(() async {

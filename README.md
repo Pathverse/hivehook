@@ -11,6 +11,8 @@ Centralize cross-cutting concerns like validation, logging, caching, and encrypt
 ```dart
 import 'package:hivehook/hivehook.dart';
 
+await HHiveCore.initialize();
+
 final config = HHConfig(env: 'myapp', usesMeta: true);
 final hive = HHive(config: config.finalize());
 
@@ -23,7 +25,7 @@ final user = await hive.get('user');
 ### Automatic Data Expiration (TTL)
 
 ```dart
-import 'package:hivehook/templates/ttl_plugin.dart';
+import 'package:hivehook/hivehook.dart';
 
 final ttlPlugin = createTTLPlugin(defaultTTLSeconds: 3600); // 1 hour
 
@@ -38,7 +40,7 @@ await hive.put('token', jwt, meta: {'ttl': '300'}); // Custom 5-min TTL
 ### LRU Cache
 
 ```dart
-import 'package:hivehook/templates/lru_plugin.dart';
+import 'package:hivehook/hivehook.dart';
 
 final lruPlugin = createLRUPlugin(maxSize: 100);
 
@@ -124,7 +126,7 @@ final user = await hive.get('user'); // Returns Map
 ## Creating Custom Plugins
 
 ```dart
-import 'package:hivehook/helper/plugin.dart';
+import 'package:hivehook/hivehook.dart';
 
 HHPlugin createCompressionPlugin() {
   return HHPlugin(
@@ -226,10 +228,10 @@ dependencies:
 ```
 
 ```dart
-import 'package:hivehook/core/base.dart';
+import 'package:hivehook/hivehook.dart';
 
 void main() async {
-  await HiveBase.initialize();
+  await HHiveCore.initialize();
   // Use HiveHook
 }
 ```

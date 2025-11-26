@@ -1,7 +1,7 @@
 import 'package:hive_ce/hive.dart';
 import 'package:hivehook/core/config.dart';
 
-class HiveBase {
+class HHiveCore {
   static String? HIVE_INIT_PATH = null;
   static HiveStorageBackendPreference HIVE_STORAGE_BACKEND_PREFERENCE =
       HiveStorageBackendPreference.native;
@@ -31,7 +31,7 @@ class HiveBase {
   static Future<CollectionBox<String>> getBox(String env) async {
     if (_hiveBoxCollection == null) {
       throw StateError(
-        'HiveBase is not initialized. Please call HiveBase.initialize() first.',
+        'HHiveCore is not initialized. Please call HHiveCore.initialize() first.',
       );
     }
     if (_openedBoxes.containsKey(env)) {

@@ -169,11 +169,11 @@ class HHCtxDirectAccess extends HHCtxDirectAccessI {
   HHCtxDirectAccess(super.ctx);
 
   Future<CollectionBox<String>> get store async {
-    return await HiveBase.getBox(ctx.env);
+    return await HHiveCore.getBox(ctx.env);
   }
 
   Future<CollectionBox<String>?> get meta async {
-    return await HiveBase.getMetaBox(ctx.env);
+    return await HHiveCore.getMetaBox(ctx.env);
   }
 
   @override

@@ -197,7 +197,7 @@ class HHive {
         await ctx.access.metaClear();
       }
     }
-    await HiveBase.dispose(payload.env!);
+    await HHiveCore.dispose(payload.env!);
     final config = HHImmutableConfig.getInstance(payload.env!);
     if (config != null) {
       dangerousRemoveConfig(config);

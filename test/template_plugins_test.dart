@@ -11,7 +11,7 @@ void main() {
     HHImmutableConfig(env: 'ttl_test', usesMeta: true);
     HHImmutableConfig(env: 'lru_test', usesMeta: true);
 
-    await HiveBase.initialize();
+    await HHiveCore.initialize();
   });
 
   group('TTL Plugin', () {

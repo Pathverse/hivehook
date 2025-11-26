@@ -155,11 +155,11 @@ config.uninstallPlugin('logging');
 **THE CORRECT WAY**:
 ```dart
 setUpAll(() async {
-  // Step 1: Create configs BEFORE HiveBase.initialize()
+  // Step 1: Create configs BEFORE HHiveCore.initialize()
   HHImmutableConfig(env: 'test_env', usesMeta: true);
   
-  // Step 2: Initialize HiveBase (registers box names)
-  await HiveBase.initialize();
+  // Step 2: Initialize HHiveCore (registers box names)
+  await HHiveCore.initialize();
 });
 
 test('dynamic hooks', () async {
@@ -179,10 +179,10 @@ test('dynamic hooks', () async {
 
 **MISTAKES TO AVOID**:
 
-❌ **Mistake 1**: Not pre-registering env before HiveBase.initialize()
+❌ **Mistake 1**: Not pre-registering env before HHiveCore.initialize()
 ```dart
 setUpAll(() async {
-  await HiveBase.initialize();  // Boxes registered
+  await HHiveCore.initialize();  // Boxes registered
 });
 
 test('...', () async {
@@ -204,7 +204,7 @@ dangerousReplaceConfig(config.finalize());  // WRONG!
 ```dart
 setUpAll(() async {
   HHImmutableConfig(env: 'test_env', usesMeta: true);  // Empty config
-  await HiveBase.initialize();
+  await HHiveCore.initialize();
 });
 
 test('...', () async {
@@ -217,7 +217,7 @@ test('...', () async {
 
 **WHY THIS PATTERN EXISTS**:
 1. Hive requires box names registered during `BoxCollection.open()`
-2. Box names come from configs created BEFORE `HiveBase.initialize()`
+2. Box names come from configs created BEFORE `HHiveCore.initialize()`
 3. `dangerousReplaceConfig()` removes old instance, creates new via `.finalize()`
 4. Tests with dynamic hooks need placeholder configs for box registration
 

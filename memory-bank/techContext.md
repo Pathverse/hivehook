@@ -23,7 +23,7 @@ hivehook/
 ├── lib/
 │   ├── hivehook.dart          # Main export file
 │   ├── core/
-│   │   ├── base.dart          # HiveBase wrapper
+│   │   ├── base.dart          # HHiveCore wrapper
 │   │   ├── config.dart        # Configuration classes
 │   │   ├── ctx.dart           # Context implementations
 │   │   ├── enums.dart         # Enums (TriggerType, NextPhase)
@@ -188,12 +188,12 @@ test('description', () async {
 
 ```dart
 setUpAll(() async {
-  // 1. Register ALL env names BEFORE HiveBase.initialize()
+  // 1. Register ALL env names BEFORE HHiveCore.initialize()
   // Even if hooks will be added dynamically via dangerousReplaceConfig
   HHImmutableConfig(env: 'test_env', usesMeta: true);
   
-  // 2. THEN initialize HiveBase (registers box names)
-  await HiveBase.initialize();
+  // 2. THEN initialize HHiveCore (registers box names)
+  await HHiveCore.initialize();
 });
 
 test('with dynamic hooks', () async {
@@ -219,8 +219,8 @@ test('with dynamic hooks', () async {
 ```
 
 **Why This Pattern Matters**:
-1. **Box Registration**: `HiveBase.initialize()` registers box names based on configs created BEFORE it runs
-2. **Config Lifecycle**: Empty placeholder → HiveBase.initialize() → dangerousReplaceConfig with hooks
+1. **Box Registration**: `HHiveCore.initialize()` registers box names based on configs created BEFORE it runs
+2. **Config Lifecycle**: Empty placeholder → HHiveCore.initialize() → dangerousReplaceConfig with hooks
 3. **Common Mistake**: Creating config in test without pre-registering → "Box not in known names" error
 4. **Another Mistake**: Calling `.finalize()` before dangerousReplaceConfig → "Config already exists" error
 

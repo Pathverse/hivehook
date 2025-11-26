@@ -83,7 +83,7 @@ class HHPlugin {
 **Testing Journey** (Important Lesson):
 - Initial tests failed: "Box not in known box names" error
 - Root cause: Didn't follow established test pattern
-- **Lesson**: Tests with dynamic hooks MUST pre-register env names before `HiveBase.initialize()`
+- **Lesson**: Tests with dynamic hooks MUST pre-register env names before `HHiveCore.initialize()`
 - **Solution**: Added placeholder configs in `setUpAll()` BEFORE initialization
 - **Pattern documented**: This is standard across all dynamic hook tests
 
@@ -215,7 +215,7 @@ Separation of concerns isn't just good practice—it's essential for preventing 
 4. **Exception-based control flow**: Natural way to break out of deep stacks
 5. **Test isolation is crucial**: Unique environments prevent test interference
 6. **Debug logs should be removable**: Comment out, don't delete
-7. **Test patterns must be followed religiously**: Tests with dynamic hooks MUST pre-register env names before HiveBase.initialize()
+7. **Test patterns must be followed religiously**: Tests with dynamic hooks MUST pre-register env names before HHiveCore.initialize()
 8. **dangerousReplaceConfig takes mutable config**: Pass HHConfig, not HHImmutableConfig - it calls .finalize() internally
 9. **Box registration happens once**: Hive registers box names during initialize() - can't add new envs afterward
 10. **Plugin tests revealed pattern importance**: Initial failures led to documenting the established test pattern that other tests already followed
