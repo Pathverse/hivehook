@@ -108,7 +108,6 @@ class HHImmutableConfig extends HHConfig {
   late final Map<String, List<HActionHook>> postActionHooks;
   final bool usesMeta;
 
-  final List<SerializationHook> metaSerializationHooks;
   final List<SerializationHook> storeSerializationHooks;
   final List<TerminalSerializationHook> metaTerminalSerializationHooks;
   final List<TerminalSerializationHook> storeTerminalSerializationHooks;
@@ -116,7 +115,6 @@ class HHImmutableConfig extends HHConfig {
   HHImmutableConfig._internal(
     Map<String, List<HActionHook>> preHooks,
     Map<String, List<HActionHook>> postHooks,
-    this.metaSerializationHooks,
     this.storeSerializationHooks,
     this.metaTerminalSerializationHooks,
     this.storeTerminalSerializationHooks, {
@@ -249,10 +247,7 @@ class HHImmutableConfig extends HHConfig {
       sortedPostHooks[event] = hooksList;
     });
 
-    // Separate serialization hooks by meta and store
-    final metaSerializationHooks = serializationHooksParam
-        .where((hook) => hook.forMeta)
-        .toList();
+    // Only store serialization hooks are used (metadata is always Map<String, dynamic>)
     final storeSerializationHooks = serializationHooksParam
         .where((hook) => hook.forStore)
         .toList();
@@ -267,7 +262,6 @@ class HHImmutableConfig extends HHConfig {
     final newInstance = HHImmutableConfig._internal(
       sortedPreHooks,
       sortedPostHooks,
-      metaSerializationHooks,
       storeSerializationHooks,
       metaTerminalSerializationHooks,
       storeTerminalSerializationHooks,

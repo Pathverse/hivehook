@@ -12,7 +12,6 @@ class SerializationHook extends BaseHook {
   final Future<bool> Function(HHCtxI ctx)? canHandle;
   final bool silentOnError;
   final Future<void> Function(HHCtxI ctx)? onError;
-  final bool forMeta;
   final bool forStore;
 
   SerializationHook({
@@ -21,7 +20,6 @@ class SerializationHook extends BaseHook {
     this.canHandle,
     this.onError,
     this.silentOnError = false,
-    this.forMeta = false,
     this.forStore = true,
   });
 }

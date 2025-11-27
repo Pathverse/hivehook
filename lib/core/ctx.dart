@@ -268,7 +268,7 @@ class HHCtxDirectAccess extends HHCtxDirectAccessI {
     final rawResult = await box.get(key);
     if (rawResult == null) return null;
 
-    // Terminal deserialization first
+    // Terminal deserialization (e.g., decryption, decompression)
     String metaStr = await ctx.control.emit(
       TriggerType.onMetaTDeserialize.name,
       action: (ctx) async {
@@ -280,29 +280,8 @@ class HHCtxDirectAccess extends HHCtxDirectAccessI {
       },
     );
 
-    // Then apply serialization hooks
-    final deserializedMeta = await ctx.control.emit(
-      TriggerType.onMetaDeserialize.name,
-      action: (ctx) async {
-        String result = metaStr;
-        for (var hook in this.ctx.config.metaSerializationHooks) {
-          if (hook.canHandle != null && !await hook.canHandle!(ctx)) {
-            continue;
-          }
-          try {
-            // Update payload so hook can read the current value
-            ctx.payload = ctx.payload.copyWith(value: result);
-            result = await hook.deserialize(ctx);
-          } catch (e) {
-            if (!hook.silentOnError) rethrow;
-            if (hook.onError != null) await hook.onError!(ctx);
-          }
-        }
-        return jsonDecode(result) as Map<String, dynamic>;
-      },
-    );
-
-    return deserializedMeta;
+    // Metadata is always Map<String, dynamic> - just JSON decode
+    return jsonDecode(metaStr) as Map<String, dynamic>;
   }
 
   @override
@@ -310,29 +289,10 @@ class HHCtxDirectAccess extends HHCtxDirectAccessI {
     final box = await meta;
     if (box == null) return;
 
-    // Apply serialization hooks first
-    String serializedMeta = await ctx.control.emit(
-      TriggerType.onMetaSerialize.name,
-      action: (ctx) async {
-        String result = jsonEncode(value);
-        for (var hook in this.ctx.config.metaSerializationHooks) {
-          if (hook.canHandle != null && !await hook.canHandle!(ctx)) {
-            continue;
-          }
-          try {
-            // Update payload so hook can read the current value
-            ctx.payload = ctx.payload.copyWith(value: result);
-            result = await hook.serialize(ctx);
-          } catch (e) {
-            if (!hook.silentOnError) rethrow;
-            if (hook.onError != null) await hook.onError!(ctx);
-          }
-        }
-        return result;
-      },
-    );
+    // Metadata is always Map<String, dynamic> - just JSON encode
+    String serializedMeta = jsonEncode(value);
 
-    // Then apply terminal serialization
+    // Apply terminal serialization (e.g., encryption, compression)
     String finalMeta = await ctx.control.emit(
       TriggerType.onMetaTSerialize.name,
       action: (ctx) async {
