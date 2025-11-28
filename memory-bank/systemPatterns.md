@@ -42,62 +42,12 @@ This allows hooks to safely call HiveHook methods without recursion.
 
 ## Key Components
 
-### 1. HHive (Public API)
-**Location**: `lib/core/hive.dart`
-**Responsibility**: User-facing API and action event emission
+1. **HHive**: User API, emits action events at boundary
+2. **HHCtxControl**: Executes pre/post hooks by priority, handles `HHCtrlException`
+3. **HHCtxDirectAccess**: Storage access, applies serialization hooks
+4. **Configuration**: Mutable `HHConfig` → `.finalize()` → immutable `HHImmutableConfig`
 
-**Pattern**:
-```dart
-static Future<dynamic> staticGet(HHPayload payload) async {
-  final ctx = HHCtx(payload);
-  return await ctx.control.emit(
-    TriggerType.valueRead.name,  // ← Action event emitted here
-    action: (ctx) async {
-      return await ctx.access.storeGet(ctx.payload.key!);
-    },
-    handleCtrlException: true,
-  );
-}
-```
-
-**Key Methods**:
-- `get()`, `put()`, `delete()`, `pop()`, `clear()`
-- `getMeta()`, `putMeta()`
-- `dispose()`
-
-### 2. HHCtxControl (Hook Execution Engine)
-**Location**: `lib/core/ctx.dart`
-**Responsibility**: Execute hooks in correct order, handle control flow
-
-**Pattern**:
-```dart
-Future<dynamic> emit(String eventName, {...}) async {
-  // 1. Execute pre-hooks
-  for (var hook in preHooks) {
-    await invoke(hook.action, handleCtrlException);
-  }
-  
-  // 2. Execute main action
-  if (action != null && !skipNextBatch) {
-    result = await invoke(action, handleCtrlException);
-  }
-  
-  // 3. Execute post-hooks
-  for (var hook in postHooks) {
-    await invoke(hook.action, handleCtrlException);
-  }
-  
-  return result;
-}
-```
-
-**Control Flow Handling**:
-- Catches `HHCtrlException` to control execution
-- Manages `NextPhase` enum values (skip, break, continue, etc.)
-- Returns appropriate values based on control flow
-
-### 3. HHCtxDirectAccess (Data Access Layer)
-**Location**: `lib/core/ctx.dart`
+See [details/sp_architecture_layers.md](details/sp_architecture_layers.md) for detailed component info.
 **Responsibility**: Direct storage access with serialization
 
 **Pattern**:
@@ -154,17 +104,24 @@ HActionHook(
 ```
 
 #### Serialization Hooks
-Transform data during read/write:
+Transform **store values** during read/write:
 ```dart
 SerializationHook(
   serialize: (ctx) async => /* transform value to string */,
   deserialize: (ctx) async => /* transform string to value */,
+  forStore: true,  // Only applies to store values, NOT metadata
 )
 ```
 
+**Important**: `SerializationHook` is **only for store values**. Metadata is always `Map<String, dynamic>` and directly JSON encoded/decoded.
+
 **Two levels**:
-1. **Application Hooks**: User-defined transformations (JSON, encryption)
-2. **Terminal Hooks**: Final transformations (compression, base64)
+1. **Application Hooks**: User-defined transformations (custom serialization)
+2. **Terminal Hooks**: Final transformations (encryption, compression, base64)
+
+**For Metadata**:
+- No `SerializationHook` applied (metadata is already JSON)
+- Only `TerminalSerializationHook` applied (for encryption/compression of JSON string)
 
 ### 6. Plugin System
 **Location**: `lib/helper/plugin.dart`
@@ -221,29 +178,12 @@ Hive box.put(key, serializedValue)
 Return to user
 ```
 
-### Read Operation
-```
-User → hive.get(key)
-  ↓
-HHive.staticGet()
-  ↓ emit(valueRead)
-  ↓
-  ├─→ Pre-action hooks
-  ↓
-HHCtxDirectAccess.storeGet()
-  ↓
-Hive box.get(key) → rawValue
-  ↓ emit(onValueTDeserialize)
-  ├─→ Terminal deserialization hooks
-  ↓ emit(onValueDeserialize)
-  ├─→ Application deserialization hooks
-  ↓
-Return deserialized value
-  ↓
-  ├─→ Post-action hooks
-  ↓
-Return to user
-```
+## Data Flow Patterns
+**Write**: HHive.put → emit(valueWrite) → pre-hooks → storePut → serialize hooks → terminal hooks → Hive box.put → post-hooks
+**Read**: HHive.get → emit(valueRead) → pre-hooks → storeGet → terminal deserialize → serialize deserialize → post-hooks → return
+**Metadata**: Always `Map<String, dynamic>` → JSON encode/decode → terminal hooks only
+
+See [details/sp_pattern_dataflow.md](details/sp_pattern_dataflow.md) for detailed flows.
 
 ## Design Patterns Used
 

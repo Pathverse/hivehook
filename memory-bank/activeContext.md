@@ -1,88 +1,23 @@
 # Active Context
 
-## Current Status: ✅ Stable - Infinite Loop Fixed
+## Current Status
+✅ Stable - All 42 tests passing
 
-### Recent Changes (November 26, 2025)
+## Current Focus
+- System feature-complete and stable
+- Recent: Fixed metadata serialization bug
+- No active blockers
 
-#### Plugin System Implementation ✅ COMPLETE
-**Feature Added**: Group hooks into plugins for easier management
+## Recent Changes (Last 3)
 
-**New Components**:
-1. `lib/helper/plugin.dart`:
-   - `HHPlugin` class with name, description, and hook collections
-   - Containers for actionHooks, serializationHooks, terminalSerializationHooks
+### Nov 27: Metadata Serialization Bug Fix
+Removed metadata SerializationHooks - metadata is always `Map<String, dynamic>`, only needs JSON+terminal hooks. [Details](details/ac_recentChange_metaSerialization.md)
 
-2. `lib/hooks/base_hook.dart`:
-   - Base class for all hooks providing UID system
-   - Auto-incrementing counter: `'hook_0'`, `'hook_1'`, ...
-   - All hook types (HActionHook, SerializationHook, TerminalSerializationHook) extend BaseHook
+### Nov 26: Plugin System
+Plugin system with UID-based install/uninstall. [Details](details/ac_recentChange_pluginSystem.md)
 
-3. `lib/core/config.dart` enhancements:
-   - `installPlugin(HHPlugin)`: Adds all plugin hooks to config lists
-   - `uninstallPlugin(String)`: Removes hooks by UID matching
-   - `installedPlugins`: Read-only map of installed plugins
-   - Lists changed to mutable (using `List.from()` in constructor)
-   - `HHImmutableConfig.installPlugin/uninstallPlugin`: Throw `UnsupportedError`
-
-**Usage Pattern**:
-```dart
-// Create plugin
-final plugin = HHPlugin(
-  name: 'logging',
-  description: 'Logs operations',
-  actionHooks: [/* hooks */],
-);
-
-// Install on mutable config
-final config = HHConfig(env: 'app', usesMeta: true);
-config.installPlugin(plugin);
-final finalConfig = config.finalize();  // Now immutable
-
-// Uninstall removes all plugin hooks by UID
-config.uninstallPlugin('logging');
-```
-
-**Test Results**: ✅ All 8 plugin tests passing
-- Install/uninstall functionality
-- Hook execution after install
-- Duplicate prevention
-- Missing plugin errors
-- Immutable config error handling
-- UID tracking
-- Multiple plugin support
-
-**Total Test Count**: 50 tests (42 original + 8 plugin tests)
-
-#### Critical Bug Fix: Infinite Loop in Hook Execution
-**Problem Identified**:
-- `HHCtxDirectAccess.storeGet()` was emitting `valueRead` action events
-- When action hooks called `hive.get()`, it would recursively call `storeGet()`
-- This created an infinite loop: `storeGet() → valueRead event → hook → hive.get() → storeGet() → ...`
-
-**Solution Implemented**:
-- Moved action event emission from `HHCtxDirectAccess` to `HHive` layer
-- `HHCtxDirectAccess` now only handles serialization events (no action events)
-- Action events (`valueRead`, `valueWrite`, etc.) now emitted at API boundary in `HHive.static*` methods
-
-**Files Modified**:
-1. `lib/core/ctx.dart`:
-   - Removed `valueRead` event emission from `storeGet()`
-   - Removed `valueWrite` event emission from `storePut()`
-   - Removed `metadataRead` event emission from `metaGet()`
-   - Removed `metadataWrite` event emission from `metaPut()`
-   - Added payload updates before calling serialization hooks
-
-2. `lib/core/hive.dart`:
-   - Added `valueRead` event emission to `staticGet()`
-   - Added `valueWrite` event emission to `staticPut()`
-   - Added `metadataRead` event emission to `staticGetMeta()`
-   - Added `metadataWrite` event emission to `staticPutMeta()`
-
-3. Debug logs commented out:
-   - `lib/core/ctx.dart`: Hook execution count logging
-   - `lib/core/config.dart`: Configuration replacement logging
-
-**Test Results**: ✅ All 42 tests passing
+### Nov 26: Infinite Loop Fix
+Fixed infinite loop by moving action events to API layer. [Details](details/ac_recentChange_pluginSystem.md)
 
 ## Current Architecture
 

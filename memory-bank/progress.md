@@ -89,6 +89,25 @@ class HHPlugin {
 
 ## 🔧 Recent Fixes
 
+### Bug: Unnecessary Metadata Serialization (November 27, 2025)
+**Status**: ✅ FIXED
+
+**Problem**: Metadata serialization hooks served no purpose
+- Metadata is always `Map<String, dynamic>` (fixed structure)
+- Applying SerializationHooks would just transform JSON to JSON
+- Terminal hooks (encryption/compression) are sufficient
+
+**Solution**: Remove metadata-specific serialization hooks
+- Removed `metaSerializationHooks` list from config
+- Removed `forMeta` flag from `SerializationHook` 
+- Simplified `metaGet()`/`metaPut()` to: JSON encode/decode + terminal hooks only
+
+**Impact**: 
+- Cleaner codebase with less abstraction overhead
+- Metadata operations are more efficient
+- Still supports encryption/compression via terminal hooks
+- All 42 tests passing
+
 ### Critical Bug: Infinite Loop (November 26, 2025)
 **Status**: ✅ FIXED
 
