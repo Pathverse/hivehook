@@ -41,4 +41,15 @@ void initializeAllTestConfigs() {
   HHImmutableConfig(env: 'control_delete', usesMeta: true);
   HHImmutableConfig(env: 'control_pop', usesMeta: true);
   HHImmutableConfig(env: 'control_nested', usesMeta: true);
+
+  // ifNotCached tests
+  HHImmutableConfig(env: 'if_not_cached_first', usesMeta: true);
+  HHImmutableConfig(env: 'if_not_cached_cached', usesMeta: true);
+  HHImmutableConfig(env: 'if_not_cached_keys', usesMeta: true);
+  HHImmutableConfig(env: 'if_not_cached_async', usesMeta: true);
+  HHImmutableConfig(env: 'if_not_cached_meta', usesMeta: true);
+  HHImmutableConfig(env: 'if_not_cached_complex', usesMeta: true);
+  HHImmutableConfig(env: 'if_not_cached_null', usesMeta: true);
+  HHImmutableConfig(env: 'if_not_cached_static', usesMeta: true);
+  HHImmutableConfig(env: 'if_not_cached_error', usesMeta: true);
 }

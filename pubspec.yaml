@@ -1,6 +1,6 @@
 name: hivehook
 description: A powerful plugin system for Hive that adds hooks, lifecycle management, and middleware capabilities with built-in TTL, LRU caching, validation, and custom transformations.
-version: 0.1.1
+version: 0.1.2
 homepage: https://github.com/Pathverse/hivehook
 repository: https://github.com/Pathverse/hivehook
 

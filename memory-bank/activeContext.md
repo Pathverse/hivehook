@@ -84,6 +84,26 @@ Removed metadata SerializationHooks - metadata is always `Map<String, dynamic>`,
 
 ## Critical Testing Patterns (NEVER REPEAT THESE MISTAKES)
 
+### CRITICAL: Running Tests
+**⚠️ TESTS MUST BE RUN THROUGH `all_tests.dart` ONLY ⚠️**
+
+```bash
+# ✅ CORRECT - Only way to run tests
+dart test test/all_tests.dart
+
+# ❌ WRONG - Will fail with "No config found for env"
+dart test test/crud_test.dart
+dart test test/if_not_cached_test.dart
+```
+
+**Why**: 
+- `all_tests.dart` initializes HHiveCore once for all tests
+- `test_configs.dart` pre-registers ALL env names before initialization
+- Individual test files expect these configs to already exist
+- Running individual test files bypasses initialization → configs don't exist → tests fail
+
+**Exception**: Tests that don't use HHive can run individually (e.g., `exception_benchmark_test.dart`)
+
 ### Test Configuration Initialization Pattern
 **Established in**: `test/all_tests.dart`, `test/test_configs.dart`, `test/hooks_test.dart`, `test/control_flow_test.dart`
 
@@ -217,3 +237,4 @@ ctx.control.breakEarly(returnValue, {'reason': 'cached'});
 4. **Immutable Configuration**: Prevents runtime bugs and enables safe concurrent access
 5. **Test Isolation**: Each test needs unique environment to avoid interference
 6. **Profile Before Optimizing**: Benchmark showed exceptions are not a bottleneck
+7. **Tests MUST run through all_tests.dart**: Individual test files fail because they need centralized initialization

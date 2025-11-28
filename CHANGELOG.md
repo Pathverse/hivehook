@@ -1,3 +1,6 @@
+## 0.1.2
+* added `ifNotCached` method to `HHive`
+
 ## 0.1.1
 * **Improved Metadata Handling**: Removed unnecessary metadata serialization hooks (metadata is always `Map<String, dynamic>`)
 * **Bug Fixes**: Fixed metadata serialization to only use JSON encoding and terminal hooks

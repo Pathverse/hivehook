@@ -7,6 +7,7 @@ import 'crud_test.dart' as crud_test;
 import 'metadata_test.dart' as metadata_test;
 import 'hooks_test.dart' as hooks_test;
 import 'control_flow_test.dart' as control_flow_test;
+import 'if_not_cached_test.dart' as if_not_cached_test;
 
 void main() {
   late Directory tempDir;
@@ -37,4 +38,5 @@ void main() {
   metadata_test.main();
   hooks_test.main();
   control_flow_test.main();
+  if_not_cached_test.main();
 }

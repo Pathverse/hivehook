@@ -147,6 +147,54 @@ class HHive {
     );
   }
 
+  static Future<dynamic> ifNotCachedStatic(
+    HHPayload payload,
+    Future<dynamic> Function() computeValue,
+  ) async {
+    final ctx = HHCtx(payload);
+
+    // Try to get existing value
+    final existing = await ctx.control.emit(
+      TriggerType.valueRead.name,
+      action: (ctx) async {
+        return await ctx.access.storeGet(ctx.payload.key!);
+      },
+      handleCtrlException: true,
+    );
+
+    if (existing != null) {
+      return existing;
+    }
+
+    // Compute new value
+    final newValue = await computeValue();
+
+    // Store it
+    await ctx.control.emit(
+      TriggerType.valueWrite.name,
+      action: (ctx) async {
+        await ctx.access.storePut(ctx.payload.key!, newValue);
+        if ((ctx as HHCtx).config.usesMeta && ctx.payload.metadata != null) {
+          await ctx.access.metaPut(ctx.payload.key!, ctx.payload.metadata!);
+        }
+      },
+      handleCtrlException: true,
+    );
+
+    return newValue;
+  }
+
+  Future<dynamic> ifNotCached(
+    String key,
+    Future<dynamic> Function() computeValue, {
+    Map<String, dynamic>? meta,
+  }) async {
+    return await HHive.ifNotCachedStatic(
+      HHPayload(env: config.env, key: key, metadata: meta),
+      computeValue,
+    );
+  }
+
   static Future<Map<String, dynamic>?> staticGetMeta(HHPayload payload) async {
     final ctx = HHCtx(payload);
     return await ctx.control.emit(

@@ -328,3 +328,4 @@ Separation of concerns isn't just good practice—it's essential for preventing 
 8. **dangerousReplaceConfig takes mutable config**: Pass HHConfig, not HHImmutableConfig - it calls .finalize() internally
 9. **Box registration happens once**: Hive registers box names during initialize() - can't add new envs afterward
 10. **API ergonomics matter**: Exception-based control flow is cleaner than forcing all hooks to return wrapped results
+11. **Test initialization is centralized**: All tests MUST run through `all_tests.dart` to ensure proper HHiveCore initialization and config registration
