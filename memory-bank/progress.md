@@ -16,10 +16,12 @@
 - [x] Pre-action hooks execute before operations
 - [x] Post-action hooks execute after operations
 - [x] Serialization hooks for data transformation
+- [x] SerializationHook ID-wrapping (routes deserialization to matching hook)
 - [x] Terminal serialization hooks for infrastructure
 - [x] Hook can handle/skip based on conditions
 - [x] Silent error handling in hooks
 - [x] Custom error handlers per hook
+- [x] Hook ID registration with duplicate prevention
 
 ### Data Operations
 - [x] Value operations with automatic serialization
@@ -56,6 +58,24 @@
 - [x] **Total: 50 passing tests**
 
 ## 🆕 Recent Features
+
+### SerializationHook ID-Wrapping (November 27, 2025)
+**Status**: ✅ COMPLETE
+
+**Feature**: Encapsulate serialized values with hook ID for precise deserialization routing
+
+**Implementation**:
+- SerializationHook constructor registers hooks in `_registeredHooks` map
+- Duplicate ID check throws `ArgumentError` if ID already registered
+- `storePut()` wraps serialized value: `{"_hivehook__id_": hookId, "value": serializedData}`
+- `storeGet()` parses wrapper, finds hook by ID, deserializes with matching hook
+- Identifier uses `_hivehook__id_` to avoid conflicts with user object properties
+
+**Benefits**:
+- First matching hook serializes, same hook deserializes (symmetric operations)
+- No ambiguity about which hook to use for deserialization
+- Enables hook-specific serialization formats
+- Prevents accidental deserialization with wrong hook
 
 ### Plugin System (November 26, 2025)
 **Status**: ✅ COMPLETE

@@ -107,6 +107,7 @@ HActionHook(
 Transform **store values** during read/write:
 ```dart
 SerializationHook(
+  id: 'my_custom_serializer',  // Unique identifier
   serialize: (ctx) async => /* transform value to string */,
   deserialize: (ctx) async => /* transform string to value */,
   forStore: true,  // Only applies to store values, NOT metadata
@@ -114,6 +115,14 @@ SerializationHook(
 ```
 
 **Important**: `SerializationHook` is **only for store values**. Metadata is always `Map<String, dynamic>` and directly JSON encoded/decoded.
+
+**ID-Wrapping Pattern** (November 2025):
+- Each SerializationHook has unique `id` string
+- Constructor registers hook in `_registeredHooks` map (throws on duplicate)
+- `storePut()` wraps: `{"_hivehook__id_": hookId, "value": serializedValue}`
+- `storeGet()` parses wrapper, uses hook ID to find exact hook for deserialization
+- Ensures symmetric serialize/deserialize (same hook both directions)
+- Identifier `_hivehook__id_` avoids collision with user properties
 
 **Two levels**:
 1. **Application Hooks**: User-defined transformations (custom serialization)
@@ -179,8 +188,8 @@ Return to user
 ```
 
 ## Data Flow Patterns
-**Write**: HHive.put → emit(valueWrite) → pre-hooks → storePut → serialize hooks → terminal hooks → Hive box.put → post-hooks
-**Read**: HHive.get → emit(valueRead) → pre-hooks → storeGet → terminal deserialize → serialize deserialize → post-hooks → return
+**Write**: HHive.put → emit(valueWrite) → pre-hooks → storePut → serialize hooks (first match) → wrap with `{"_hivehook__id_": id, "value": data}` → terminal hooks → Hive box.put → post-hooks
+**Read**: HHive.get → emit(valueRead) → pre-hooks → storeGet → terminal deserialize → parse wrapper → find hook by ID → deserialize with matching hook → post-hooks → return
 **Metadata**: Always `Map<String, dynamic>` → JSON encode/decode → terminal hooks only
 
 See [details/sp_pattern_dataflow.md](details/sp_pattern_dataflow.md) for detailed flows.

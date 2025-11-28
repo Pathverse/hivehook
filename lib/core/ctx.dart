@@ -195,24 +195,37 @@ class HHCtxDirectAccess extends HHCtxDirectAccessI {
       },
     );
 
+    // Parse the wrapped value to extract ID and value
+    final parsed = jsonDecode(valueStr) as Map<String, dynamic>;
+    final hookId = parsed['_hivehook__id_'] as String?;
+    final wrappedValue = parsed['value'];
+
     // Then apply serialization hooks
     final deserializedValue = await ctx.control.emit(
       TriggerType.onValueDeserialize.name,
       action: (ctx) async {
-        String result = valueStr;
-        for (var hook in this.ctx.config.storeSerializationHooks) {
-          if (hook.canHandle != null && !await hook.canHandle!(ctx)) {
-            continue;
-          }
-          try {
-            // Update payload so hook can read the current value
-            ctx.payload = ctx.payload.copyWith(value: result);
-            result = await hook.deserialize(ctx);
-          } catch (e) {
-            if (!hook.silentOnError) rethrow;
-            if (hook.onError != null) await hook.onError!(ctx);
+        dynamic result = wrappedValue;
+
+        if (hookId != null) {
+          // Find the specific hook by ID
+          final hook = this.ctx.config.storeSerializationHooks
+              .where((h) => h.id == hookId)
+              .firstOrNull;
+
+          if (hook != null) {
+            if (hook.canHandle == null || await hook.canHandle!(ctx)) {
+              try {
+                // Update payload so hook can read the current value
+                ctx.payload = ctx.payload.copyWith(value: result);
+                result = await hook.deserialize(ctx);
+              } catch (e) {
+                if (!hook.silentOnError) rethrow;
+                if (hook.onError != null) await hook.onError!(ctx);
+              }
+            }
           }
         }
+
         return result;
       },
     );
@@ -223,10 +236,12 @@ class HHCtxDirectAccess extends HHCtxDirectAccessI {
   @override
   Future<void> storePut(String key, dynamic value) async {
     // Apply serialization hooks first
-    String serializedValue = await ctx.control.emit(
+    Map<String, dynamic> wrappedValue = await ctx.control.emit(
       TriggerType.onValueSerialize.name,
       action: (ctx) async {
-        String result = value.toString();
+        String? hookId;
+        dynamic result = value;
+
         for (var hook in this.ctx.config.storeSerializationHooks) {
           if (hook.canHandle != null && !await hook.canHandle!(ctx)) {
             continue;
@@ -235,14 +250,21 @@ class HHCtxDirectAccess extends HHCtxDirectAccessI {
             // Update payload so hook can read the current value
             ctx.payload = ctx.payload.copyWith(value: result);
             result = await hook.serialize(ctx);
+            hookId = hook.id; // Track which hook serialized this
+            break; // Only use the first matching hook
           } catch (e) {
             if (!hook.silentOnError) rethrow;
             if (hook.onError != null) await hook.onError!(ctx);
           }
         }
-        return result;
+
+        // Wrap the result with ID
+        return {'_hivehook__id_': hookId, 'value': result};
       },
     );
+
+    // Convert wrapped value to JSON string
+    String serializedValue = jsonEncode(wrappedValue);
 
     // Then apply terminal serialization
     String finalValue = await ctx.control.emit(

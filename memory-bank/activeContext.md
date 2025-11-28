@@ -10,14 +10,14 @@
 
 ## Recent Changes (Last 3)
 
+### Nov 27: SerializationHook ID-Wrapping Feature
+SerializationHooks now encapsulate serialized values with hook ID using format `{"_hivehook__id_": hookId, "value": data}`. Enables routing deserialization to the specific hook that serialized the data. Identifier uses `_hivehook__id_` to avoid conflicts with user objects.
+
 ### Nov 27: Metadata Serialization Bug Fix
 Removed metadata SerializationHooks - metadata is always `Map<String, dynamic>`, only needs JSON+terminal hooks. [Details](details/ac_recentChange_metaSerialization.md)
 
 ### Nov 26: Plugin System
 Plugin system with UID-based install/uninstall. [Details](details/ac_recentChange_pluginSystem.md)
-
-### Nov 26: Infinite Loop Fix
-Fixed infinite loop by moving action events to API layer. [Details](details/ac_recentChange_pluginSystem.md)
 
 ## Current Architecture
 
