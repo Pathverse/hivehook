@@ -55,7 +55,7 @@ Removed metadata SerializationHooks - metadata is always `Map<String, dynamic>`,
 
 ### Potential Improvements
 - [ ] Add query/filter hooks for read operations
-- [ ] Implement batch operation support with hooks
+- [ ] Batch operations with context-aware hooks (see progress.md for design)
 - [ ] Add performance monitoring hooks
 - [ ] Create hook composition utilities
 - [ ] Add hook debugging tools

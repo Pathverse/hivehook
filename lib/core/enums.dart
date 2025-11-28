@@ -40,3 +40,11 @@ enum NextPhase {
   f_delete,
   f_pop
 }
+
+enum Action {
+  x_get,
+  x_put,
+  x_delete,
+  x_clear,
+  x_iterate,
+}
