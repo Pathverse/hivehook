@@ -1,3 +1,7 @@
+## 0.1.1
+* **Improved Metadata Handling**: Removed unnecessary metadata serialization hooks (metadata is always `Map<String, dynamic>`)
+* **Bug Fixes**: Fixed metadata serialization to only use JSON encoding and terminal hooks
+
 ## 0.1.0
 * Initial release of HiveHook
 * Hook system for intercepting Hive operations (pre/post execution)

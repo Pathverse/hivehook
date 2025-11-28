@@ -98,6 +98,7 @@ final config = HHConfig(
   usesMeta: true,
   serializationHooks: [
     SerializationHook(
+      id: 'encryption_hook',
       serialize: (ctx) async => encrypt(ctx.payload.value),
       deserialize: (ctx) async => decrypt(ctx.payload.value),
     ),
@@ -113,6 +114,7 @@ final config = HHConfig(
   usesMeta: true,
   serializationHooks: [
     SerializationHook(
+      id: 'json_hook',
       serialize: (ctx) async => jsonEncode(ctx.payload.value),
       deserialize: (ctx) async => jsonDecode(ctx.payload.value),
     ),
@@ -132,6 +134,7 @@ HHPlugin createCompressionPlugin() {
   return HHPlugin(
     serializationHooks: [
       SerializationHook(
+        id: 'compression_hook',
         serialize: (ctx) async => compress(ctx.payload.value),
         deserialize: (ctx) async => decompress(ctx.payload.value),
       ),
@@ -176,10 +179,13 @@ HActionHook(
 **Serialization Hooks** - Transform data:
 ```dart
 SerializationHook(
+  id: 'my_hook',  // Required: unique identifier
   serialize: (ctx) async => transform(ctx.payload.value),
   deserialize: (ctx) async => reverseTransform(ctx.payload.value),
 )
 ```
+
+> **Note**: Each SerializationHook requires a unique `id`. The ID is used internally to route deserialization to the correct hook that serialized the data.
 
 ## Trigger Types
 
