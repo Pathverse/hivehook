@@ -1,23 +1,23 @@
 # Active Context
 
 ## Current Status
-✅ Stable - All 42 tests passing
+✅ Stable - All tests passing (42 functional + 6 performance benchmark)
 
 ## Current Focus
 - System feature-complete and stable
-- Recent: Fixed metadata serialization bug
+- Performance validated: exception overhead ~1-2μs per call
 - No active blockers
 
 ## Recent Changes (Last 3)
+
+### Nov 28: Exception Performance Validation
+Benchmarked `HHCtrlException` overhead: ~1-2μs per throw/catch. Confirmed exception-based control flow is performant and appropriate. Result pattern would save only ~2μs while adding boilerplate. Database I/O dominates (100μs-10ms+), making exception overhead negligible.
 
 ### Nov 27: SerializationHook ID-Wrapping Feature
 SerializationHooks now encapsulate serialized values with hook ID using format `{"_hivehook__id_": hookId, "value": data}`. Enables routing deserialization to the specific hook that serialized the data. Identifier uses `_hivehook__id_` to avoid conflicts with user objects.
 
 ### Nov 27: Metadata Serialization Bug Fix
 Removed metadata SerializationHooks - metadata is always `Map<String, dynamic>`, only needs JSON+terminal hooks. [Details](details/ac_recentChange_metaSerialization.md)
-
-### Nov 26: Plugin System
-Plugin system with UID-based install/uninstall. [Details](details/ac_recentChange_pluginSystem.md)
 
 ## Current Architecture
 
@@ -69,7 +69,7 @@ Plugin system with UID-based install/uninstall. [Details](details/ac_recentChang
 - [ ] Create troubleshooting guide
 
 ### Testing
-- [ ] Add performance benchmarks
+- [x] Exception performance benchmarks
 - [ ] Add stress tests for hook chains
 - [ ] Test multi-isolate scenarios
 - [ ] Add mutation testing
@@ -213,6 +213,7 @@ ctx.control.breakEarly(returnValue, {'reason': 'cached'});
 
 1. **Layer Separation is Critical**: Mixing concerns between layers causes infinite recursion
 2. **Context Updates Matter**: Serialization hooks need updated context before execution
-3. **Exception-Based Control Flow**: Works well for breaking out of deep call stacks
+3. **Exception Overhead is Negligible**: ~1-2μs per throw/catch, irrelevant vs database I/O (100μs-10ms+)
 4. **Immutable Configuration**: Prevents runtime bugs and enables safe concurrent access
 5. **Test Isolation**: Each test needs unique environment to avoid interference
+6. **Profile Before Optimizing**: Benchmark showed exceptions are not a bottleneck

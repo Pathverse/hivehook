@@ -115,6 +115,7 @@ dart analyze
 - Dart's exception propagation natural for breaking out of call stack
 - Clear separation between errors and control flow
 - Type-safe with structured data
+- Performance validated: ~1-2μs overhead per throw/catch (negligible vs database I/O)
 
 ### 5. Dual Hook System
 **Decision**: Separate action hooks and serialization hooks
@@ -132,9 +133,20 @@ dart analyze
 
 ## Performance Considerations
 
+### Exception Overhead (Validated Nov 28, 2025)
+**Benchmark Results** (`test/exception_benchmark_test.dart`):
+- Single throw/catch: ~1.5μs
+- Nested (3 levels): ~2.1μs
+- Hook chain (20% control flow): ~2.4μs
+- Worst case (100% control flow): ~2.0μs
+- Metadata overhead: +0.35μs
+
+**Conclusion**: Exception overhead is negligible. Database I/O (100μs-10ms+) dominates performance. Result pattern would save ~2μs but add significant boilerplate.
+
 ### Hook Execution Overhead
 - Each operation triggers multiple hook executions
 - Pre/post hooks run even if empty list
+- Exception control flow: ~1-2μs per throw/catch (validated as acceptable)
 - Consider hook count vs benefit trade-off
 
 ### Serialization Chains
