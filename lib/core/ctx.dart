@@ -381,8 +381,8 @@ class HHCtxDirectAccess extends HHCtxDirectAccessI {
 class HHCtx extends HHCtxI {
   final HHImmutableConfig config;
 
-  HHCtx(HHPayload super.payload)
-    : config = HHImmutableConfig.getInstance(payload.env!)! {
+  HHCtx(HHPayloadI super.payloadInput)
+    : config = HHImmutableConfig.getInstance(payloadInput.asImmutable().env!)! {
     control = HHCtxControl(this);
     data = HHCtxData(this);
     access = HHCtxDirectAccess(this);

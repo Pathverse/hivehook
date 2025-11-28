@@ -100,15 +100,11 @@ abstract class HHCtxI {
   String get env;
   dynamic get config;
 
-  HHCtxI(HHPayload? initialPayload)
-    : initialPayload = HHImmutablePayload(
-        key: initialPayload?.key,
-        value: initialPayload?.value,
-        metadata: initialPayload?.metadata ?? {},
-      ),
-      payload = HHPayload(
-        key: initialPayload?.key,
-        value: initialPayload?.value,
-        metadata: initialPayload?.metadata ?? {},
-      );
+  HHCtxI(HHPayloadI? payloadInput)
+    : initialPayload =
+          payloadInput?.asImmutable() ??
+          const HHImmutablePayload(key: null, value: null, metadata: {}),
+      payload =
+          payloadInput?.asMutable() ??
+          HHPayload(key: null, value: null, metadata: {});
 }

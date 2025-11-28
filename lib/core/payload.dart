@@ -1,4 +1,10 @@
-class HHPayload {
+class HHPayloadI {
+  const HHPayloadI();
+
+  bool get isMutable => this is HHPayload;
+}
+
+class HHPayload extends HHPayloadI {
   final String? env;
   final String? key;
   final dynamic value;
@@ -25,7 +31,7 @@ class HHPayload {
   }
 }
 
-class HHImmutablePayload {
+class HHImmutablePayload extends HHPayloadI {
   final String? env;
   final String? key;
   final dynamic value;
@@ -40,5 +46,40 @@ class HHImmutablePayload {
       value: payload.value,
       metadata: payload.metadata,
     );
+  }
+}
+
+
+extension HHPayloadExtensions on HHPayloadI {
+  HHPayload asMutable() {
+    if (this is HHPayload) {
+      return this as HHPayload;
+    } else if (this is HHImmutablePayload) {
+      final immutable = this as HHImmutablePayload;
+      return HHPayload(
+        env: immutable.env,
+        key: immutable.key,
+        value: immutable.value,
+        metadata: immutable.metadata,
+      );
+    } else {
+      throw Exception('Unknown HHPayloadI implementation');
+    }
+  }
+
+  HHImmutablePayload asImmutable() {
+    if (this is HHImmutablePayload) {
+      return this as HHImmutablePayload;
+    } else if (this is HHPayload) {
+      final mutable = this as HHPayload;
+      return HHImmutablePayload(
+        env: mutable.env,
+        key: mutable.key,
+        value: mutable.value,
+        metadata: mutable.metadata,
+      );
+    } else {
+      throw Exception('Unknown HHPayloadI implementation');
+    }
   }
 }

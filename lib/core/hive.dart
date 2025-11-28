@@ -49,7 +49,7 @@ class HHive {
     return instance;
   }
 
-  static Future<void> staticClear(HHPayload payload) async {
+  static Future<void> staticClear(HHPayloadI payload) async {
     final ctx = HHCtx(payload);
     await ctx.control.emit(
       TriggerType.onClear.name,
@@ -65,7 +65,7 @@ class HHive {
     await HHive.staticClear(HHPayload(env: config.env, metadata: meta));
   }
 
-  static Future<void> staticDelete(HHPayload payload) async {
+  static Future<void> staticDelete(HHPayloadI payload) async {
     final ctx = HHCtx(payload);
     await ctx.control.emit(
       TriggerType.onDelete.name,
@@ -85,7 +85,7 @@ class HHive {
     );
   }
 
-  static Future<dynamic> staticPop(HHPayload payload) async {
+  static Future<dynamic> staticPop(HHPayloadI payload) async {
     final ctx = HHCtx(payload);
     return await ctx.control.emit(
       TriggerType.onDelete.name,
@@ -106,7 +106,7 @@ class HHive {
     );
   }
 
-  static Future<dynamic> staticGet(HHPayload payload) async {
+  static Future<dynamic> staticGet(HHPayloadI payload) async {
     final ctx = HHCtx(payload);
     return await ctx.control.emit(
       TriggerType.valueRead.name,
@@ -123,7 +123,7 @@ class HHive {
     );
   }
 
-  static Future<void> staticPut(HHPayload payload) async {
+  static Future<void> staticPut(HHPayloadI payload) async {
     final ctx = HHCtx(payload);
     await ctx.control.emit(
       TriggerType.valueWrite.name,
@@ -148,7 +148,7 @@ class HHive {
   }
 
   static Future<dynamic> ifNotCachedStatic(
-    HHPayload payload,
+    HHPayloadI payload,
     Future<dynamic> Function() computeValue,
   ) async {
     final ctx = HHCtx(payload);
@@ -195,7 +195,7 @@ class HHive {
     );
   }
 
-  static Future<Map<String, dynamic>?> staticGetMeta(HHPayload payload) async {
+  static Future<Map<String, dynamic>?> staticGetMeta(HHPayloadI payload) async {
     final ctx = HHCtx(payload);
     return await ctx.control.emit(
       TriggerType.metadataRead.name,
@@ -215,7 +215,7 @@ class HHive {
     );
   }
 
-  static Future<void> staticPutMeta(HHPayload payload) async {
+  static Future<void> staticPutMeta(HHPayloadI payload) async {
     final ctx = HHCtx(payload);
     await ctx.control.emit(
       TriggerType.metadataWrite.name,
@@ -236,7 +236,8 @@ class HHive {
     );
   }
 
-  static Future<void> dispose(HHPayload payload, {bool clear = true}) async {
+  static Future<void> dispose(HHPayloadI payload, {bool clear = true}) async {
+    final immutablePayload = payload.asImmutable();
     if (clear) {
       // Clear data directly without triggering hooks during disposal
       final ctx = HHCtx(payload);
@@ -245,8 +246,8 @@ class HHive {
         await ctx.access.metaClear();
       }
     }
-    await HHiveCore.dispose(payload.env!);
-    final config = HHImmutableConfig.getInstance(payload.env!);
+    await HHiveCore.dispose(immutablePayload.env!);
+    final config = HHImmutableConfig.getInstance(immutablePayload.env!);
     if (config != null) {
       dangerousRemoveConfig(config);
     }
