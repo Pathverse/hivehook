@@ -37,7 +37,12 @@ class HHImmutablePayload extends HHPayloadI {
   final dynamic value;
   final Map<String, dynamic>? metadata;
 
-  const HHImmutablePayload({this.env, this.key, this.value, required this.metadata});
+  const HHImmutablePayload({
+    this.env,
+    this.key,
+    this.value,
+    required this.metadata,
+  });
 
   HHImmutablePayload fromMutable(HHPayload payload) {
     return HHImmutablePayload(
@@ -47,8 +52,24 @@ class HHImmutablePayload extends HHPayloadI {
       metadata: payload.metadata,
     );
   }
-}
 
+  HHImmutablePayload copyWith({
+    String? env,
+    String? key,
+    dynamic value,
+    Map<String, dynamic>? metadata,
+  }) {
+    final newMetadata = metadata != null
+        ? {...?this.metadata, ...metadata}
+        : this.metadata;
+
+    return HHImmutablePayload(
+      key: key ?? this.key,
+      value: value ?? this.value,
+      metadata: newMetadata!,
+    );
+  }
+}
 
 extension HHPayloadExtensions on HHPayloadI {
   HHPayload asMutable() {
