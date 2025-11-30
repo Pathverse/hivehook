@@ -1,3 +1,6 @@
+## 0.1.3
+* added iter methods
+
 ## 0.1.2
 * added `ifNotCached` method to `HHive`
 

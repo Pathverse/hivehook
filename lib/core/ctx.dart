@@ -376,6 +376,38 @@ class HHCtxDirectAccess extends HHCtxDirectAccessI {
     if (box == null) return;
     await box.clear();
   }
+
+  // iter keys
+  @override
+  Stream<String> storeKeys() async* {
+    final box = await store;
+    for (var key in await box.getAllKeys()) {
+      yield key;
+    }
+  }
+
+  @override
+  Stream<dynamic> storeValues() async* {
+    final box = await store;
+    for (var key in await box.getAllKeys()) {
+      final value = await storeGet(key);
+      if (value != null) {
+        yield value;
+      }
+    }
+  }
+
+  @override
+  Stream<MapEntry<String, dynamic>> storeEntries() async* {
+    final box = await store;
+    for (var key in await box.getAllKeys()) {
+      final value = await storeGet(key);
+      if (value != null) {
+        yield MapEntry(key, value);
+      }
+    }
+  }
+  
 }
 
 class HHCtx extends HHCtxI {

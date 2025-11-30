@@ -252,4 +252,54 @@ class HHive {
       dangerousRemoveConfig(config);
     }
   }
+
+  Stream<String> keys() async* {
+    /// get keys stream, note this will bypass hooks
+    final ctx = HHCtx(HHPayload(env: config.env));
+    await for (final key in ctx.access.storeKeys()) {
+      yield key;
+    }
+  }
+
+  static Stream<String> staticKeys(HHPayloadI payload) async* {
+    /// get keys stream, note this will bypass hooks
+    final ctx = HHCtx(payload);
+    await for (final key in ctx.access.storeKeys()) {
+      yield key;
+    }
+  }
+
+  Stream<dynamic> values() async* {
+    /// get values stream, note this will bypass hooks
+    final ctx = HHCtx(HHPayload(env: config.env));
+    await for (final value in ctx.access.storeValues()) {
+      yield value;
+    }
+  }
+
+  static Stream<dynamic> staticValues(HHPayloadI payload) async* {
+    /// get values stream, note this will bypass hooks
+    final ctx = HHCtx(payload);
+    await for (final value in ctx.access.storeValues()) {
+      yield value;
+    }
+  }
+
+  Stream<MapEntry<String, dynamic>> entries() async* {
+    /// get entries stream, note this will bypass hooks
+    final ctx = HHCtx(HHPayload(env: config.env));
+    await for (final entry in ctx.access.storeEntries()) {
+      yield entry;
+    }
+  }
+
+  static Stream<MapEntry<String, dynamic>> staticEntries(
+    HHPayloadI payload,
+  ) async* {
+    /// get entries stream, note this will bypass hooks
+    final ctx = HHCtx(payload);
+    await for (final entry in ctx.access.storeEntries()) {
+      yield entry;
+    }
+  }
 }

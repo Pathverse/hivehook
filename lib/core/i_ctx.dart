@@ -88,6 +88,9 @@ abstract class HHCtxDirectAccessI {
   Future<void> metaDelete(String key);
   Future<Map<String, dynamic>?> metaPop(String key);
   Future<void> metaClear();
+  Stream<String> storeKeys();
+  Stream<dynamic> storeValues();
+  Stream<MapEntry<String, dynamic>> storeEntries();
 }
 
 abstract class HHCtxI {
