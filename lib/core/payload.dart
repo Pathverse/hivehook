@@ -24,6 +24,7 @@ class HHPayload extends HHPayloadI {
         : this.metadata;
 
     return HHPayload(
+      env: env ?? this.env,
       key: key ?? this.key,
       value: value ?? this.value,
       metadata: newMetadata!,
@@ -64,6 +65,7 @@ class HHImmutablePayload extends HHPayloadI {
         : this.metadata;
 
     return HHImmutablePayload(
+      env: env ?? this.env,
       key: key ?? this.key,
       value: value ?? this.value,
       metadata: newMetadata!,
