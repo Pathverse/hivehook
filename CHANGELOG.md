@@ -1,3 +1,6 @@
+## 0.1.5
+* fixed an issue where payload does not automatically copy env over
+
 ## 0.1.4
 * supported both string and int for ttl plugin key
 
