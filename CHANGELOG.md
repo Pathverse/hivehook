@@ -1,3 +1,6 @@
+## 0.1.4
+* supported both string and int for ttl plugin key
+
 ## 0.1.3
 * added iter methods
 

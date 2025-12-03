@@ -58,13 +58,18 @@ HHPlugin createTTLPlugin({int defaultTTLSeconds = 3600}) {
           final meta = await ctx.access.metaGet(ctx.payload.key!);
           if (meta == null) return; // No metadata, allow read
 
-          final ttlStr = meta['ttl'];
-          final createdAtStr = meta['created_at'];
+          final ttlValue = meta['ttl'];
+          final createdAtValue = meta['created_at'];
 
-          if (ttlStr == null || createdAtStr == null) return; // No TTL info
+          if (ttlValue == null || createdAtValue == null) return; // No TTL info
 
-          final ttl = int.tryParse(ttlStr);
-          final createdAt = int.tryParse(createdAtStr);
+          // Support both int and string TTL values
+          final ttl = ttlValue is int
+              ? ttlValue
+              : int.tryParse(ttlValue.toString());
+          final createdAt = createdAtValue is int
+              ? createdAtValue
+              : int.tryParse(createdAtValue.toString());
 
           if (ttl == null || createdAt == null) return;
 
@@ -80,7 +85,7 @@ HHPlugin createTTLPlugin({int defaultTTLSeconds = 3600}) {
             // Skip the read and return null using HHCtrlException
             throw HHCtrlException(
               nextPhase: NextPhase.f_break,
-              returnValue: null
+              returnValue: null,
             );
           }
         },
