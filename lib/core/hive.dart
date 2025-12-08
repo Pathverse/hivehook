@@ -150,6 +150,7 @@ class HHive {
   static Future<dynamic> ifNotCachedStatic(
     HHPayloadI payload,
     Future<dynamic> Function() computeValue,
+    {bool cacheOnNullValues = false}
   ) async {
     final ctx = HHCtx(payload);
 
@@ -168,7 +169,9 @@ class HHive {
 
     // Compute new value
     final newValue = await computeValue();
-
+    if (newValue == null && !cacheOnNullValues) {
+      return null;
+    }
     // Store it
     await ctx.control.emit(
       TriggerType.valueWrite.name,
@@ -188,10 +191,12 @@ class HHive {
     String key,
     Future<dynamic> Function() computeValue, {
     Map<String, dynamic>? meta,
+    bool cacheOnNullValues = false,
   }) async {
     return await HHive.ifNotCachedStatic(
       HHPayload(env: config.env, key: key, metadata: meta),
       computeValue,
+      cacheOnNullValues: cacheOnNullValues,
     );
   }
 
