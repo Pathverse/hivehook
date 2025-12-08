@@ -1,6 +1,8 @@
 import 'package:hive_ce/hive.dart';
 import 'package:hivehook/core/config.dart';
 
+/// Low-level Hive wrapper for managing box collections.
+/// Handles initialization and box lifecycle management.
 class HHiveCore {
   static String? HIVE_INIT_PATH = null;
   static HiveStorageBackendPreference HIVE_STORAGE_BACKEND_PREFERENCE =
@@ -28,6 +30,7 @@ class HHiveCore {
 
   static final Map<String, CollectionBox<String>> _openedBoxes = {};
 
+  /// Retrieves or opens a box for the given environment.
   static Future<CollectionBox<String>> getBox(String env) async {
     if (_hiveBoxCollection == null) {
       throw StateError(
@@ -42,6 +45,7 @@ class HHiveCore {
     return box;
   }
 
+  /// Retrieves the metadata box for an environment if metadata is enabled.
   static Future<CollectionBox<String>?> getMetaBox(String env) async {
     final config = HHImmutableConfig.instances[env];
     if (config == null || !config.usesMeta) {
@@ -51,6 +55,8 @@ class HHiveCore {
     return getBox(boxName);
   }
 
+  /// Initializes Hive and opens all registered box collections.
+  /// Must be called before using any HHive instances.
   static Future<void> initialize() async {
     if (_alreadyInitialized) {
       return;
@@ -79,6 +85,7 @@ class HHiveCore {
     );
   }
 
+  /// Flushes and closes boxes for the given environment.
   static Future<void> dispose(String env) async {
     if (_hiveBoxCollection == null) {
       return;

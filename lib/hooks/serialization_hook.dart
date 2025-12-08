@@ -1,6 +1,8 @@
 import 'package:hivehook/core/i_ctx.dart';
 import 'package:hivehook/hooks/base_hook.dart';
 
+/// Terminal hook for infrastructure-level transformations (encryption, compression).
+/// Always processes strings, applied after regular serialization hooks.
 abstract class TerminalSerializationHook extends BaseHook {
   Future<String> serialize(String value, HHCtxI ctx);
   Future<String> deserialize(String value, HHCtxI ctx);
@@ -9,6 +11,8 @@ abstract class TerminalSerializationHook extends BaseHook {
 // type of both map or list
 typedef SerializationValue = dynamic;
 
+/// Hook for transforming data during serialization/deserialization.
+/// Each hook has a unique [id] and is registered globally.
 class SerializationHook extends BaseHook {
   static final Map<String, SerializationHook> _registeredHooks = {};
 

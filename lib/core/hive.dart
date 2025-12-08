@@ -4,6 +4,8 @@ import 'package:hivehook/core/ctx.dart';
 import 'package:hivehook/core/enums.dart';
 import 'package:hivehook/core/payload.dart';
 
+/// Main HiveHook API for interacting with the database.
+/// Provides CRUD operations with hook support and metadata management.
 class HHive {
   static final Map<String, HHive> _instances = {};
 
@@ -12,6 +14,8 @@ class HHive {
 
   HHive._internal(this.config);
 
+  /// Creates or retrieves an HHive instance for the given environment.
+  /// Either [config] or [env] must be provided.
   factory HHive({HHImmutableConfig? config, String? env}) {
     if (config == null && env == null) {
       throw ArgumentError(
@@ -49,6 +53,8 @@ class HHive {
     return instance;
   }
 
+  /// Clears all data and metadata for the given environment.
+  /// Triggers onClear hooks.
   static Future<void> staticClear(HHPayloadI payload) async {
     final ctx = HHCtx(payload);
     await ctx.control.emit(
@@ -61,10 +67,13 @@ class HHive {
     );
   }
 
+  /// Clears all data and metadata for this environment.
   Future<void> clear({Map<String, dynamic>? meta}) async {
     await HHive.staticClear(HHPayload(env: config.env, metadata: meta));
   }
 
+  /// Deletes a value and its metadata by key.
+  /// Triggers onDelete hooks.
   static Future<void> staticDelete(HHPayloadI payload) async {
     final ctx = HHCtx(payload);
     await ctx.control.emit(
@@ -79,12 +88,15 @@ class HHive {
     );
   }
 
+  /// Deletes a value and its metadata by key.
   Future<void> delete(String key, {Map<String, dynamic>? meta}) async {
     await HHive.staticDelete(
       HHPayload(env: config.env, key: key, metadata: meta),
     );
   }
 
+  /// Gets and deletes a value in one operation.
+  /// Returns the value before deletion.
   static Future<dynamic> staticPop(HHPayloadI payload) async {
     final ctx = HHCtx(payload);
     return await ctx.control.emit(
@@ -100,12 +112,15 @@ class HHive {
     );
   }
 
+  /// Gets and deletes a value in one operation.
   Future<dynamic> pop(String key, {Map<String, dynamic>? meta}) async {
     return await HHive.staticPop(
       HHPayload(env: config.env, key: key, metadata: meta),
     );
   }
 
+  /// Retrieves a value by key.
+  /// Triggers valueRead hooks.
   static Future<dynamic> staticGet(HHPayloadI payload) async {
     final ctx = HHCtx(payload);
     return await ctx.control.emit(
@@ -117,12 +132,15 @@ class HHive {
     );
   }
 
+  /// Retrieves a value by key.
   Future<dynamic> get(String key, {Map<String, dynamic>? meta}) async {
     return await HHive.staticGet(
       HHPayload(env: config.env, key: key, metadata: meta),
     );
   }
 
+  /// Stores a value with optional metadata.
+  /// Triggers valueWrite hooks.
   static Future<void> staticPut(HHPayloadI payload) async {
     final ctx = HHCtx(payload);
     await ctx.control.emit(
@@ -137,6 +155,7 @@ class HHive {
     );
   }
 
+  /// Stores a value with optional metadata.
   Future<void> put(
     String key,
     dynamic value, {
@@ -147,11 +166,13 @@ class HHive {
     );
   }
 
+  /// Gets cached value or computes and caches it if not found.
+  /// Set [cacheOnNullValues] to control whether null results are cached.
   static Future<dynamic> ifNotCachedStatic(
     HHPayloadI payload,
-    Future<dynamic> Function() computeValue,
-    {bool cacheOnNullValues = false}
-  ) async {
+    Future<dynamic> Function() computeValue, {
+    bool cacheOnNullValues = false,
+  }) async {
     final ctx = HHCtx(payload);
 
     // Try to get existing value
@@ -187,6 +208,7 @@ class HHive {
     return newValue;
   }
 
+  /// Gets cached value or computes and caches it if not found.
   Future<dynamic> ifNotCached(
     String key,
     Future<dynamic> Function() computeValue, {
@@ -200,6 +222,8 @@ class HHive {
     );
   }
 
+  /// Retrieves metadata for a key.
+  /// Triggers metadataRead hooks.
   static Future<Map<String, dynamic>?> staticGetMeta(HHPayloadI payload) async {
     final ctx = HHCtx(payload);
     return await ctx.control.emit(
@@ -211,6 +235,7 @@ class HHive {
     );
   }
 
+  /// Retrieves metadata for a key.
   Future<Map<String, dynamic>?> getMeta(
     String key, {
     Map<String, dynamic>? meta,
@@ -220,6 +245,8 @@ class HHive {
     );
   }
 
+  /// Stores metadata for a key.
+  /// Triggers metadataWrite hooks.
   static Future<void> staticPutMeta(HHPayloadI payload) async {
     final ctx = HHCtx(payload);
     await ctx.control.emit(
@@ -231,6 +258,7 @@ class HHive {
     );
   }
 
+  /// Stores metadata for a key.
   Future<void> putMeta(
     String key,
     Map<String, dynamic> metadata, {
@@ -241,6 +269,8 @@ class HHive {
     );
   }
 
+  /// Disposes an environment and optionally clears its data.
+  /// Set [clear] to false to keep data after disposal.
   static Future<void> dispose(HHPayloadI payload, {bool clear = true}) async {
     final immutablePayload = payload.asImmutable();
     if (clear) {
@@ -258,56 +288,58 @@ class HHive {
     }
   }
 
+  /// Returns a stream of all keys. Bypasses hooks for performance.
   Stream<String> keys() async* {
-    /// get keys stream, note this will bypass hooks
     final ctx = HHCtx(HHPayload(env: config.env));
     await for (final key in ctx.access.storeKeys()) {
       yield key;
     }
   }
 
+  /// Returns a stream of all keys. Bypasses hooks for performance.
   static Stream<String> staticKeys(HHPayloadI payload) async* {
-    /// get keys stream, note this will bypass hooks
     final ctx = HHCtx(payload);
     await for (final key in ctx.access.storeKeys()) {
       yield key;
     }
   }
 
+  /// Returns a stream of all values. Bypasses hooks for performance.
   Stream<dynamic> values() async* {
-    /// get values stream, note this will bypass hooks
     final ctx = HHCtx(HHPayload(env: config.env));
     await for (final value in ctx.access.storeValues()) {
       yield value;
     }
   }
 
+  /// Returns a stream of all values. Bypasses hooks for performance.
   static Stream<dynamic> staticValues(HHPayloadI payload) async* {
-    /// get values stream, note this will bypass hooks
     final ctx = HHCtx(payload);
     await for (final value in ctx.access.storeValues()) {
       yield value;
     }
   }
 
+  /// Returns a stream of all key-value entries. Bypasses hooks for performance.
   Stream<MapEntry<String, dynamic>> entries() async* {
-    /// get entries stream, note this will bypass hooks
     final ctx = HHCtx(HHPayload(env: config.env));
     await for (final entry in ctx.access.storeEntries()) {
       yield entry;
     }
   }
 
+  /// Returns a stream of all key-value entries. Bypasses hooks for performance.
   static Stream<MapEntry<String, dynamic>> staticEntries(
     HHPayloadI payload,
   ) async* {
-    /// get entries stream, note this will bypass hooks
     final ctx = HHCtx(payload);
     await for (final entry in ctx.access.storeEntries()) {
       yield entry;
     }
   }
 
+  /// Clears all data across all environments.
+  /// Use [exemptList] to specify regex patterns for environments to skip.
   static Future<void> staticClearAll({
     List<String> exemptList = const [],
   }) async {

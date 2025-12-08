@@ -1,5 +1,6 @@
 int _uidCounter = 0;
 
+/// Base class for all hooks, providing unique identification.
 class BaseHook {
   final String uid;
 

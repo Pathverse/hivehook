@@ -2,6 +2,8 @@ import 'package:hivehook/hooks/action_hook.dart';
 import 'package:hivehook/hooks/serialization_hook.dart';
 import 'package:hivehook/helper/plugin.dart';
 
+/// Mutable configuration for HiveHook.
+/// Use [finalize] to create an immutable config for use with HHive.
 class HHConfig {
   final String env;
   final List<HActionHook> actionHooks;
@@ -10,6 +12,8 @@ class HHConfig {
   final List<TerminalSerializationHook> terminalSerializationHooks;
   final Map<String, HHPlugin> _installedPlugins = {};
 
+  /// Creates a mutable configuration.
+  /// Set [usesMeta] to enable metadata support (default: true).
   HHConfig({
     required this.env,
     List<HActionHook>? actionHooks,
@@ -42,7 +46,7 @@ class HHConfig {
   Map<String, HHPlugin> get installedPlugins =>
       Map.unmodifiable(_installedPlugins);
 
-  /// Install a plugin by adding all its hooks to the configuration
+  /// Installs a plugin by adding all its hooks to this configuration.
   void installPlugin(HHPlugin plugin) {
     if (_installedPlugins.containsKey(plugin.uid)) {
       throw ArgumentError('Plugin "${plugin.uid}" is already installed.');
@@ -56,7 +60,7 @@ class HHConfig {
     _installedPlugins[plugin.uid] = plugin;
   }
 
-  /// Uninstall a plugin by removing all its hooks from the configuration
+  /// Uninstalls a plugin by removing all its hooks from this configuration.
   void uninstallPlugin(String pluginUid) {
     if (!_installedPlugins.containsKey(pluginUid)) {
       throw ArgumentError('Plugin "$pluginUid" is not installed.');
@@ -85,6 +89,7 @@ class HHConfig {
     _installedPlugins.remove(pluginUid);
   }
 
+  /// Converts this mutable config into an immutable config for use with HHive.
   HHImmutableConfig finalize() {
     return HHImmutableConfig(
       env: env,
@@ -96,12 +101,15 @@ class HHConfig {
   }
 }
 
+/// Immutable configuration used by HHive instances.
+/// Created by calling [HHConfig.finalize] or directly via factory constructor.
 class HHImmutableConfig extends HHConfig {
   static final Map<String, HHImmutableConfig> _instances = {};
 
   static Map<String, HHImmutableConfig> get instances =>
       Map.unmodifiable(_instances);
 
+  /// Retrieves an existing immutable config by environment name.
   static HHImmutableConfig? getInstance(String env) => _instances[env];
 
   late final Map<String, List<HActionHook>> preActionHooks;
@@ -149,6 +157,8 @@ class HHImmutableConfig extends HHConfig {
     );
   }
 
+  /// Creates or retrieves an immutable configuration.
+  /// Returns existing instance if one exists for the environment.
   factory HHImmutableConfig({
     required String env,
     List<HActionHook> actionHooks = const [],
@@ -286,6 +296,8 @@ class HHImmutableConfig extends HHConfig {
   int get hashCode => env.hashCode;
 }
 
+/// Replaces an existing config for testing purposes.
+/// Use with caution - bypasses normal validation.
 void dangerousReplaceConfig(dynamic config) {
   if (config is! HHConfig) {
     throw ArgumentError('Provided config is not of type HHConfig.');
@@ -312,10 +324,12 @@ void dangerousReplaceConfig(dynamic config) {
   }
 }
 
+/// Clears all registered configs for testing purposes.
 void dangerousClearAllConfigs() {
   HHImmutableConfig._instances.clear();
 }
 
+/// Removes a specific config for testing purposes.
 void dangerousRemoveConfig(HHImmutableConfig config) {
   HHImmutableConfig._instances.remove(config.env);
 }

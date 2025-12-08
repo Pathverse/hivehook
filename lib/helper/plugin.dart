@@ -3,6 +3,8 @@ import 'package:hivehook/hooks/serialization_hook.dart';
 
 int _uidCounter = 0;
 
+/// Container for grouping related hooks into a reusable plugin.
+/// A plugin must have at least one hook.
 class HHPlugin {
   final String uid = 'plugin_${_uidCounter++}';
   final List<HActionHook> actionHooks;

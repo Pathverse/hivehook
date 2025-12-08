@@ -1,6 +1,8 @@
 import 'package:hivehook/core/enums.dart';
 import 'package:hivehook/core/payload.dart';
 
+/// Exception for controlling hook execution flow.
+/// Throw this to break early, skip operations, or modify return values.
 class HHCtrlException implements Exception {
   final NextPhase nextPhase;
   final dynamic returnValue;
@@ -12,11 +14,13 @@ class HHCtrlException implements Exception {
   }) : runtimeMeta = Map.unmodifiable(runtimeMeta ?? {});
 }
 
+/// General runtime exception for HiveHook operations.
 class HHRuntimeException implements Exception {
   final String message;
   HHRuntimeException(this.message);
 }
 
+/// Storage for runtime data that persists across hook executions.
 class HHCtxData {
   // ignore: unused_field
   final HHCtxI _ctx;
@@ -25,6 +29,7 @@ class HHCtxData {
   final Map<String, dynamic> runtimeData = {};
 }
 
+/// Interface for controlling hook execution and managing execution stages.
 abstract class HHCtxControlI {
   final HHCtxI _ctx;
   HHCtxControlI(this._ctx);
@@ -65,6 +70,7 @@ abstract class HHCtxControlI {
 
   String? get currentStage => _stage.isNotEmpty ? _stage.last : null;
 
+  /// Emits an event, executing all registered hooks for that event.
   Future<dynamic> emit(
     String eventName, {
     Future<dynamic> Function(HHCtxI ctx)? action,
@@ -93,6 +99,8 @@ abstract class HHCtxDirectAccessI {
   Stream<MapEntry<String, dynamic>> storeEntries();
 }
 
+/// Main context object passed to hooks.
+/// Provides access to payload, control flow, data storage, and direct database access.
 abstract class HHCtxI {
   late final HHCtxControlI control;
   late final HHCtxData data;

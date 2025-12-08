@@ -1,9 +1,11 @@
+/// Base interface for payload objects.
 class HHPayloadI {
   const HHPayloadI();
 
   bool get isMutable => this is HHPayload;
 }
 
+/// Mutable payload containing operation data (key, value, metadata, environment).
 class HHPayload extends HHPayloadI {
   final String? env;
   final String? key;
@@ -32,6 +34,7 @@ class HHPayload extends HHPayloadI {
   }
 }
 
+/// Immutable version of payload for read-only contexts.
 class HHImmutablePayload extends HHPayloadI {
   final String? env;
   final String? key;

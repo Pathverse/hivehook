@@ -1,5 +1,7 @@
 import 'package:hivehook/core/enums.dart';
 
+/// Defines when and how an action hook should be triggered.
+/// Use [HHLatch.pre] for pre-execution hooks or [HHLatch.custom] for custom events.
 class HHLatch {
   final TriggerType triggerType;
   final bool isPost;
@@ -26,6 +28,7 @@ class HHLatch {
     );
   }
 
+  /// Creates a pre-execution latch for the given trigger type.
   factory HHLatch.pre({
     required TriggerType triggerType,
     String? customEvent,
