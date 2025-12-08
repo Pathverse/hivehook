@@ -302,4 +302,19 @@ class HHive {
       yield entry;
     }
   }
+
+  static Future<void> staticClearAll({List<String> exemptList = const []}) async {
+    final envs = HHImmutableConfig.instances.keys;
+    for (final env in envs) {
+      // if regex match
+      if (exemptList.any((pattern) => RegExp(pattern).hasMatch(env))) {
+        continue;
+      }
+      final ctx = HHCtx(HHPayload(env: env));
+      await ctx.access.storeClear();
+      if (ctx.config.usesMeta) {
+        await ctx.access.metaClear();
+      }
+    }
+  }
 }
