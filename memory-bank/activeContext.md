@@ -7,17 +7,18 @@
 - System feature-complete and stable
 - Performance validated: exception overhead ~1-2μs per call
 - No active blockers
+- Version 0.1.6 released with new features
 
 ## Recent Changes (Last 3)
+
+### Dec 8: Cache Control & Utility Improvements
+Added `cacheOnNullValues` parameter to `ifNotCached` and `ifNotCachedStatic` methods, allowing control over whether null results should be cached. Added static `clearAll()` method to clear all data across environments. Changed `usesMeta` default from `false` to `true` for better metadata support out-of-the-box. [Details](details/ac_recentChange_dec8CacheControl.md)
 
 ### Nov 28: Exception Performance Validation
 Benchmarked `HHCtrlException` overhead: ~1-2μs per throw/catch. Confirmed exception-based control flow is performant and appropriate. Result pattern would save only ~2μs while adding boilerplate. Database I/O dominates (100μs-10ms+), making exception overhead negligible.
 
 ### Nov 27: SerializationHook ID-Wrapping Feature
 SerializationHooks now encapsulate serialized values with hook ID using format `{"_hivehook__id_": hookId, "value": data}`. Enables routing deserialization to the specific hook that serialized the data. Identifier uses `_hivehook__id_` to avoid conflicts with user objects.
-
-### Nov 27: Metadata Serialization Bug Fix
-Removed metadata SerializationHooks - metadata is always `Map<String, dynamic>`, only needs JSON+terminal hooks. [Details](details/ac_recentChange_metaSerialization.md)
 
 ## Current Architecture
 

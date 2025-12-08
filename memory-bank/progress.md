@@ -11,6 +11,8 @@
 - [x] Context object with payload, control, access, data
 - [x] Configuration system (mutable → immutable)
 - [x] Priority-based hook ordering
+- [x] `ifNotCached` method with cache control options
+- [x] Static `clearAll()` method for cross-environment cleanup
 
 ### Hook System
 - [x] Pre-action hooks execute before operations
@@ -59,6 +61,29 @@
 - [x] **Total: 48 passing tests (42 functional + 6 performance)**
 
 ## 🆕 Recent Features
+
+### Cache Control & Utility Methods (December 8, 2025)
+**Status**: ✅ COMPLETE
+
+**Features**:
+1. **cacheOnNullValues Parameter**: Added to `ifNotCached` and `ifNotCachedStatic` methods
+   - Controls whether null values from computeFn should be cached
+   - Default: `true` (cache null values)
+   - Allows flexible cache management for scenarios where null results should not be stored
+
+2. **Static clearAll() Method**: Clear all data across all environments
+   - Useful for cleanup operations
+   - Clears both values and metadata
+   - Works across all registered environments
+
+3. **usesMeta Default Change**: Changed from `false` to `true`
+   - Breaking change for new configurations
+   - Metadata support now enabled by default
+   - Better out-of-the-box experience for metadata operations
+
+**Files Modified**:
+- `lib/core/hive.dart`: Added `cacheOnNullValues` parameter, implemented `clearAll()`
+- `lib/core/config.dart`: Changed `usesMeta` default value
 
 ### Exception Performance Validation (November 28, 2025)
 **Status**: ✅ COMPLETE
@@ -174,86 +199,16 @@ ctx.payload = ctx.payload.copyWith(value: result);
 result = await hook.deserialize(ctx);
 ```
 
-## 📋 What's Left to Build
+## 📋 Future Work
 
-### Potential Enhancements
-- [ ] Query hooks for filtering/searching
-- [ ] **Batch operations with context-aware hooks** (design documented below)
-- [ ] Transaction support
-- [ ] Schema validation system
-- [ ] Migration hooks for data versioning
-- [ ] Performance monitoring integration
-- [ ] Hook composition utilities
-- [ ] Conditional hook execution (more advanced than canHandle)
+See [details/pg_futureWork_roadmap.md](details/pg_futureWork_roadmap.md) for complete roadmap including:
+- Potential enhancements (query hooks, batch operations, transactions, etc.)
+- Developer experience improvements
+- Documentation needs
+- Optimization opportunities
+- Next milestones
 
-#### Batch Operations Design (Future Feature)
-
-**Goal**: Execute multiple operations efficiently while maintaining hook system integrity
-
-**Current Progress**: 
-- `HHFullPayload` class created for individual batch items
-- `HHBatchPayload` class created for batch container
-- Design considerations identified (Nov 28, 2025)
-
-**Design Decisions Needed**:
-
-1. **Hook Execution Strategy - Hybrid Approach Recommended**:
-   - Emit `batchStart` event before batch execution
-   - Execute individual operations normally (each emits own events)
-   - Share context across batch via `ctx.data.runtimeData['batchItems']`
-   - Emit `batchEnd` event after batch completion
-   - Hooks can detect batch mode and optimize if needed
-
-2. **Context Lifecycle**:
-   - Current: Context created per operation, destroyed after completion
-   - Batch needs: Context survives across all batch items
-   - Solution: Create one context, pass through all operations, store batch state in `ctx.data.runtimeData`
-
-3. **Return Values**:
-   - Need `HHBatchResult` class with `List<dynamic> results` and `List<Exception?> errors`
-   - Support mixed operations (gets + puts) in same batch
-
-4. **Type Safety**:
-   - Use factory constructors: `HHFullPayload.get()`, `.put()`, `.delete()`, `.clear()`
-   - Prevents invalid field combinations
-
-5. **API Surface**:
-   - Options: Standalone `batch.execute()` vs `hive.batch([...])`
-   - Recommendation: Through HHive to maintain architectural consistency
-
-**Implementation Checklist** (when ready):
-- [ ] Add `batchStart` and `batchEnd` to `TriggerType` enum
-- [ ] Implement `HHBatchResult` class
-- [ ] Add factory constructors to `HHFullPayload`
-- [ ] Implement context sharing mechanism
-- [ ] Add `batch()` method to HHive API
-- [ ] Write batch operation tests
-- [ ] Document batch-aware hook patterns
-- [ ] Consider adding `ctx.isBatch` boolean flag
-
-**Key Insight**: Hybrid approach maintains backward compatibility while enabling batch optimizations for hooks that care about batches.
-
-### Developer Experience
-- [ ] Better error messages with context
-- [ ] Hook debugging tools
-- [ ] Performance profiling tools
-- [ ] IDE integration/snippets
-- [ ] Hook testing utilities
-
-### Documentation
-- [ ] API reference documentation
-- [ ] Hook cookbook with examples
-- [ ] Migration guide from plain Hive
-- [ ] Architecture deep-dive
-- [ ] Performance guide
-- [ ] Troubleshooting guide
-
-### Optimization
-- [ ] Benchmark hook execution overhead
-- [ ] Optimize serialization chain
-- [ ] Cache compiled hook lists
-- [ ] Reduce box access overhead
-- [ ] Lazy hook evaluation
+**Batch operations design**: See [details/pg_futureFeatures_batchOps.md](details/pg_futureFeatures_batchOps.md)
 
 ## 📊 Current Status
 
@@ -263,69 +218,23 @@ result = await hook.deserialize(ctx);
 - **Linter**: Clean (analysis_options.yaml enforced)
 - **Architecture**: Stable and well-separated
 - **Documentation**: Memory bank maintained
+- **Version**: 0.1.6 released (December 8, 2025)
 
 ### Known Issues
 None! All tests passing, no known bugs.
 
-### Technical Debt
-- Debug logging still in code (commented out)
-- Could use more inline documentation
-- Some methods could be extracted for clarity
-- Error messages could be more descriptive
-
 ## 🎯 Success Metrics
 
-### Functional Requirements: ✅ Met
-- ✅ Hook system works as designed
-- ✅ No infinite loops
-- ✅ Clean architecture
-- ✅ Full CRUD + metadata support
-- ✅ Control flow management
+**Functional**: ✅ Hook system, no infinite loops, clean architecture, full CRUD+metadata, control flow
+**Technical**: ✅ Type-safe API, async/await, immutable config, environment isolation, test coverage
+**UX**: ✅ Simple API, clear registration, transparent operation, flexible control
 
-### Technical Requirements: ✅ Met
-- ✅ Type-safe API
-- ✅ Async/await throughout
-- ✅ Immutable configuration
-- ✅ Environment isolation
-- ✅ Test coverage
+## 💡 Key Insights
 
-### User Experience: ✅ Good
-- ✅ Simple API
-- ✅ Clear hook registration
-- ✅ Transparent operation
-- ✅ Flexible control flow
+**Critical lesson**: Layer separation prevents infinite recursion. Action events at API boundary, serialization in access layer.
 
-## 📈 Evolution of Design Decisions
-
-### Initial Design
-- Action events emitted in access layer
-- **Result**: Infinite loops when hooks called HiveHook methods
-
-### Revised Design (Current)
-- Action events emitted in API layer
-- Access layer only handles serialization
-- **Result**: Safe recursion, clean separation
-
-### Key Insight
-Separation of concerns isn't just good practice—it's essential for preventing infinite recursion in a hook system where hooks can trigger the operations they're monitoring.
-
-## 🚀 Next Milestones
-
-1. **Documentation Phase**: Create comprehensive docs for users
-2. **Optimization Phase**: Profile and optimize hot paths
-3. **Enhancement Phase**: Add query hooks and batch operations
-4. **Publishing Phase**: Prepare for pub.dev release
-
-## 💡 Lessons Learned
-
-1. **Layer separation prevents recursion**: Keep action events at API boundary
-2. **Context updates enable transformation chains**: Update payload between hooks
-3. **Immutability prevents bugs**: Finalize config before use
-4. **Profile before optimizing**: Exception overhead (~1-2μs) is negligible vs database I/O (100μs-10ms+)
-5. **Test isolation is crucial**: Unique environments prevent test interference
-6. **Debug logs should be removable**: Comment out, don't delete
-7. **Test patterns must be followed religiously**: Tests with dynamic hooks MUST pre-register env names before HHiveCore.initialize()
-8. **dangerousReplaceConfig takes mutable config**: Pass HHConfig, not HHImmutableConfig - it calls .finalize() internally
-9. **Box registration happens once**: Hive registers box names during initialize() - can't add new envs afterward
-10. **API ergonomics matter**: Exception-based control flow is cleaner than forcing all hooks to return wrapped results
-11. **Test initialization is centralized**: All tests MUST run through `all_tests.dart` to ensure proper HHiveCore initialization and config registration
+See [details/pg_lessons_learned.md](details/pg_lessons_learned.md) for complete lessons including:
+- Architecture & design patterns
+- Performance considerations
+- Testing patterns and common mistakes
+- Evolution of design decisions

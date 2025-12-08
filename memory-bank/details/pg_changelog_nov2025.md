@@ -1,3 +1,32 @@
+# Detailed Change History - November-December 2025
+
+## December 8, 2025
+
+### Version 0.1.6 Release
+**Features**:
+1. **cacheOnNullValues Parameter**: Added to `ifNotCached` and `ifNotCachedStatic` methods
+   - Provides control over whether null results should be cached
+   - Default: `true` (maintains backward compatibility)
+   - Enables flexible cache management
+
+2. **Static clearAll() Method**: Clear all data across all environments
+   - Clears both values and metadata
+   - Respects environment isolation
+   - Useful for reset, logout, and testing scenarios
+
+3. **usesMeta Default Change**: Changed from `false` to `true`
+   - **Breaking change** for implicit defaults
+   - Better out-of-the-box metadata support
+   - Aligns with common usage patterns
+
+**Files Modified**:
+- `lib/core/hive.dart`: Added `cacheOnNullValues` parameter, implemented `clearAll()`
+- `lib/core/config.dart`: Changed `usesMeta` default
+
+**Test Results**: All 48 tests passing (42 functional + 6 performance)
+
+---
+
 # Detailed Change History - November 2025
 
 ## November 27, 2025

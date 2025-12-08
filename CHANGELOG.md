@@ -1,3 +1,8 @@
+## 0.1.6
+* **New Feature**: Added `cacheOnNullValues` option to `ifNotCached` and `ifNotCachedStatic` methods for controlling whether null values should be cached
+* **New Feature**: Added static `clearAll` method to clear all data across all environments
+* **Breaking Change**: `usesMeta` now defaults to `true` (previously `false`)
+
 ## 0.1.5
 * fixed an issue where payload does not automatically copy env over
 
