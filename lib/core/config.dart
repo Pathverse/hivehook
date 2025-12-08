@@ -119,7 +119,7 @@ class HHImmutableConfig extends HHConfig {
     this.metaTerminalSerializationHooks,
     this.storeTerminalSerializationHooks, {
     required super.env,
-    required this.usesMeta,
+    this.usesMeta = true,
     List<HActionHook>? actionHooks,
     List<SerializationHook>? serializationHooks,
     List<TerminalSerializationHook>? terminalSerializationHooks,
