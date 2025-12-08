@@ -407,7 +407,6 @@ class HHCtxDirectAccess extends HHCtxDirectAccessI {
       }
     }
   }
-  
 }
 
 class HHCtx extends HHCtxI {

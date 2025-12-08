@@ -38,5 +38,4 @@ class HHLatch {
       priority: priority,
     );
   }
-
 }

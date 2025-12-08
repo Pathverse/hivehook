@@ -89,7 +89,10 @@ void main() {
       await hive.put('bool', true);
 
       expect(await hive.get('string'), equals('text'));
-      expect(await hive.get('number'), equals(123)); // JSON preserves number type
+      expect(
+        await hive.get('number'),
+        equals(123),
+      ); // JSON preserves number type
       expect(await hive.get('bool'), equals(true)); // JSON preserves bool type
     });
   });

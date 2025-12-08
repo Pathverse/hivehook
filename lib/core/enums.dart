@@ -1,4 +1,3 @@
-
 // ignore_for_file: constant_identifier_names
 
 enum TriggerType {
@@ -6,16 +5,16 @@ enum TriggerType {
   onUpdate,
   onDelete,
   onClear,
-  
+
   onIterate,
-  
+
   metadataRead,
   metadataWrite,
   valueRead,
   valueWrite,
 
   custom,
-  
+
   boxOpen,
   boxClose,
 
@@ -32,19 +31,6 @@ enum TriggerType {
   onMetaTDeserialize,
 }
 
-enum NextPhase {
-  f_continue,
-  f_skip,
-  f_break,
-  f_panic,
-  f_delete,
-  f_pop
-}
+enum NextPhase { f_continue, f_skip, f_break, f_panic, f_delete, f_pop }
 
-enum Action {
-  x_get,
-  x_put,
-  x_delete,
-  x_clear,
-  x_iterate,
-}
+enum Action { x_get, x_put, x_delete, x_clear, x_iterate }

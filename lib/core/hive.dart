@@ -303,7 +303,9 @@ class HHive {
     }
   }
 
-  static Future<void> staticClearAll({List<String> exemptList = const []}) async {
+  static Future<void> staticClearAll({
+    List<String> exemptList = const [],
+  }) async {
     final envs = HHImmutableConfig.instances.keys;
     for (final env in envs) {
       // if regex match

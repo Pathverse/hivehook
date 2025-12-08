@@ -15,6 +15,4 @@ class BaseHook {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is BaseHook && runtimeType == other.runtimeType && uid == other.uid;
-
-  
 }
