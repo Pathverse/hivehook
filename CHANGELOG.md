@@ -1,3 +1,6 @@
+## 0.1.7
+* bump hive_ce version
+
 ## 0.1.6
 * **New Feature**: Added `cacheOnNullValues` option to `ifNotCached` and `ifNotCachedStatic` methods for controlling whether null values should be cached
 * **New Feature**: Added static `clearAll` method to clear all data across all environments
