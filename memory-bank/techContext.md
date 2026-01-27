@@ -30,7 +30,10 @@ hivehook/
 │   │   ├── hive.dart          # Public API (HHive)
 │   │   ├── i_ctx.dart         # Context interfaces
 │   │   ├── latch.dart         # Hook latch definitions
-│   │   └── payload.dart       # Payload data classes
+│   │   ├── payload.dart       # Payload data classes
+│   │   ├── web_debug.dart     # Conditional export (stub/web)
+│   │   ├── web_debug_stub.dart # No-op for non-web platforms
+│   │   └── web_debug_web.dart # window.hiveDebug for web
 │   ├── hooks/
 │   │   ├── base_hook.dart          # Base class with UID system
 │   │   ├── action_hook.dart        # Action hook implementation

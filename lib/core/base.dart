@@ -1,9 +1,34 @@
 import 'package:hive_ce/hive.dart';
 import 'package:hivehook/core/config.dart';
+import 'package:hivehook/core/web_debug.dart' as web_debug;
+import 'package:hivehook/core/web_debug.dart' as web_debug;
 
 /// Low-level Hive wrapper for managing box collections.
 /// Handles initialization and box lifecycle management.
 class HHiveCore {
+  /// Detect debug mode using assertions (only run in debug mode).
+  /// This mirrors Flutter's kDebugMode but works in pure Dart.
+  static final bool kDebugMode = () {
+    bool isDebug = false;
+    assert(() {
+      isDebug = true;
+      return true;
+    }());
+    return isDebug;
+  }();
+
+  /// Whether debug object storage is available.
+  /// Only works on web platform where objects are stored in `window.hiveDebug`.
+  static bool get isDebugAvailable => web_debug.isWebDebugAvailable;
+
+  /// Override for debug object storage. When null, uses [kDebugMode] && [isDebugAvailable].
+  /// Set to `false` to disable debug storage.
+  /// Set to `true` to force debug storage (only works on web).
+  static bool? _debugObjOverride;
+  static bool get DEBUG_OBJ =>
+      (_debugObjOverride ?? kDebugMode) && isDebugAvailable;
+  static set DEBUG_OBJ(bool? value) => _debugObjOverride = value;
+
   static String? HIVE_INIT_PATH = null;
   static HiveStorageBackendPreference HIVE_STORAGE_BACKEND_PREFERENCE =
       HiveStorageBackendPreference.native;
@@ -88,6 +113,11 @@ class HHiveCore {
       path: HIVE_INIT_PATH,
       key: HIVE_CIPHER,
     );
+
+    // Initialize web debug storage if available and enabled
+    if (DEBUG_OBJ) {
+      web_debug.initWebDebug();
+    }
   }
 
   /// Flushes and closes boxes for the given environment.

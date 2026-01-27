@@ -115,13 +115,28 @@ await hive.setMeta('key', {'custom': 1}); // Update metadata
 | `onPop` | Before/after `pop()` |
 | `onClear` | Before/after `clear()` |
 
+## Web Debug Mode
+
+When `HHiveCore.DEBUG_OBJ` is enabled (auto-detected via `kDebugMode`), original objects are stored to `window.hiveDebug` for easy inspection in browser DevTools:
+
+```js
+// In browser console:
+window.hiveDebug                    // View all stored objects
+window.hiveDebug['myEnv::myKey']    // View specific key
+Object.keys(window.hiveDebug)       // List all keys
+```
+
+> **Note**: Debug storage only works on web platform.
+
 ## Installation
 
 ```yaml
 dependencies:
-  hivehook: ^0.1.8
+  hivehook: ^0.2.0
   hive_ce: ^2.10.0
 ```
+
+See [hive_ce on pub.dev](https://pub.dev/packages/hive_ce) for Hive documentation.
 
 ## License
 

@@ -25,6 +25,14 @@
 │  - Single shared `_meta` box for metadata   │
 │    (namespaced keys: {env}::{key})          │
 └─────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────┐
+│      Web Debug (window.hiveDebug)           │
+│  - Stores original objects as JS objects    │
+│  - Only on web platform when DEBUG_OBJ=true │
+│  - Keys: {env}::{key}                       │
+│  - Inspectable in browser DevTools console  │
+└─────────────────────────────────────────────┘
 ```
 
 ## Critical Architecture Decision: Layer Separation

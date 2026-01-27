@@ -45,7 +45,7 @@ class HHImmutablePayload extends HHPayloadI {
     this.env,
     this.key,
     this.value,
-    required this.metadata,
+    this.metadata,
   });
 
   HHImmutablePayload fromMutable(HHPayload payload) {

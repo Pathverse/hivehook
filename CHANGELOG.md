@@ -1,6 +1,7 @@
-## 0.1.8
-* **Optimized Storage**: Consolidated metadata into a single `_meta` box using namespaced keys (`{env}::{key}`) instead of separate `_meta_{env}` boxes per environment
-* Reduced file clutter in storage directory
+## 0.2.0
+* Consolidated metadata into single `_meta` box with namespaced keys (`{env}::{key}`)
+* **Web Debug Mode**: `HHiveCore.DEBUG_OBJ` stores original objects to `window.hiveDebug` (web only, inspectable in DevTools)
+* Revamped example app with multi-panel test interface
 
 ## 0.1.7
 * bump hive_ce version

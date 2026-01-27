@@ -5,6 +5,7 @@ import 'package:hivehook/core/config.dart';
 import 'package:hivehook/core/enums.dart';
 import 'package:hivehook/core/i_ctx.dart';
 import 'package:hivehook/core/payload.dart';
+import 'package:hivehook/core/web_debug.dart' as web_debug;
 
 class HHCtxControl extends HHCtxControlI {
   @override
@@ -280,6 +281,12 @@ class HHCtxDirectAccess extends HHCtxDirectAccessI {
 
     final box = await store;
     await box.put(key, finalValue);
+
+    // Web debug: store original value in window.hiveDebug for easy inspection
+    if (HHiveCore.DEBUG_OBJ) {
+      final debugKey = '${ctx.env}::$key';
+      web_debug.webDebugPut(debugKey, value);
+    }
   }
 
   @override
@@ -337,6 +344,11 @@ class HHCtxDirectAccess extends HHCtxDirectAccessI {
   Future<void> storeDelete(String key) async {
     final box = await store;
     await box.delete(key);
+    // Also delete from web debug if enabled
+    if (HHiveCore.DEBUG_OBJ) {
+      final debugKey = '${ctx.env}::$key';
+      web_debug.webDebugDelete(debugKey);
+    }
   }
 
   @override
@@ -354,6 +366,17 @@ class HHCtxDirectAccess extends HHCtxDirectAccessI {
   Future<void> storeClear() async {
     final box = await store;
     await box.clear();
+    
+    // Also clear web debug entries for this environment
+    if (HHiveCore.DEBUG_OBJ) {
+      final prefix = '${ctx.env}::';
+      final keys = web_debug.webDebugKeys();
+      for (final key in keys) {
+        if (key.startsWith(prefix)) {
+          web_debug.webDebugDelete(key);
+        }
+      }
+    }
   }
 
   @override

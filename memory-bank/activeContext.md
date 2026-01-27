@@ -7,12 +7,15 @@
 - System feature-complete and stable
 - Performance validated: exception overhead ~1-2μs per call
 - No active blockers
-- Version 0.1.6 released with new features
+- Version 0.2.0 released with storage optimizations
 
 ## Recent Changes (Last 3)
 
-### Jan 27, 2026: Consolidated Meta Box Storage
-Replaced multiple per-environment meta boxes (`_meta_{env}`) with a single shared `_meta` box. All metadata now uses namespaced keys with format `{env}::{key}`. This reduces file clutter (one `_meta.hive` instead of many `_meta_*.hive` files) and simplifies storage management. `metaClear()` now only clears keys matching the current environment's prefix.
+### Jan 27, 2026: Web Debug & Storage Optimizations (v0.2.0)
+- **Consolidated Meta Box**: Single `_meta` box with namespaced keys (`{env}::{key}`) instead of per-environment boxes
+- **Web Debug Mode**: New `HHiveCore.DEBUG_OBJ` flag (auto-detects via `kDebugMode`) stores original objects to `window.hiveDebug` JS object (web only) - fully inspectable in browser DevTools without serialization
+- **Conditional Compilation**: Uses `web_debug.dart` with stub/web implementations for platform-specific behavior
+- **New Example App**: Complete rewrite with multi-file structure, sidebar navigation, result log, and test panels for Basic/TTL/LRU/JSON/Combo/Custom testing
 
 ### Dec 8: Cache Control & Utility Improvements
 Added `cacheOnNullValues` parameter to `ifNotCached` and `ifNotCachedStatic` methods, allowing control over whether null results should be cached. Added static `clearAll()` method to clear all data across environments. Changed `usesMeta` default from `false` to `true` for better metadata support out-of-the-box. [Details](details/ac_recentChange_dec8CacheControl.md)
