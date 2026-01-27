@@ -21,8 +21,9 @@
                   ▼
 ┌─────────────────────────────────────────────┐
 │         Hive (Storage Layer)                │
-│  - CollectionBox<String> for data           │
-│  - CollectionBox<String> for metadata       │
+│  - CollectionBox<String> for data (per env) │
+│  - Single shared `_meta` box for metadata   │
+│    (namespaced keys: {env}::{key})          │
 └─────────────────────────────────────────────┘
 ```
 

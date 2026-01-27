@@ -1,7 +1,7 @@
 # Active Context
 
 ## Current Status
-✅ Stable - All tests passing (42 functional + 6 performance benchmark)
+✅ Stable - All tests passing (51 tests)
 
 ## Current Focus
 - System feature-complete and stable
@@ -11,14 +11,14 @@
 
 ## Recent Changes (Last 3)
 
+### Jan 27, 2026: Consolidated Meta Box Storage
+Replaced multiple per-environment meta boxes (`_meta_{env}`) with a single shared `_meta` box. All metadata now uses namespaced keys with format `{env}::{key}`. This reduces file clutter (one `_meta.hive` instead of many `_meta_*.hive` files) and simplifies storage management. `metaClear()` now only clears keys matching the current environment's prefix.
+
 ### Dec 8: Cache Control & Utility Improvements
 Added `cacheOnNullValues` parameter to `ifNotCached` and `ifNotCachedStatic` methods, allowing control over whether null results should be cached. Added static `clearAll()` method to clear all data across environments. Changed `usesMeta` default from `false` to `true` for better metadata support out-of-the-box. [Details](details/ac_recentChange_dec8CacheControl.md)
 
 ### Nov 28: Exception Performance Validation
 Benchmarked `HHCtrlException` overhead: ~1-2μs per throw/catch. Confirmed exception-based control flow is performant and appropriate. Result pattern would save only ~2μs while adding boilerplate. Database I/O dominates (100μs-10ms+), making exception overhead negligible.
-
-### Nov 27: SerializationHook ID-Wrapping Feature
-SerializationHooks now encapsulate serialized values with hook ID using format `{"_hivehook__id_": hookId, "value": data}`. Enables routing deserialization to the specific hook that serialized the data. Identifier uses `_hivehook__id_` to avoid conflicts with user objects.
 
 ## Current Architecture
 

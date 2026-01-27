@@ -1,3 +1,7 @@
+## 0.1.8
+* **Optimized Storage**: Consolidated metadata into a single `_meta` box using namespaced keys (`{env}::{key}`) instead of separate `_meta_{env}` boxes per environment
+* Reduced file clutter in storage directory
+
 ## 0.1.7
 * bump hive_ce version
 

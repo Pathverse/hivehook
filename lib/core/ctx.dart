@@ -287,7 +287,9 @@ class HHCtxDirectAccess extends HHCtxDirectAccessI {
     final box = await meta;
     if (box == null) return null;
 
-    final rawResult = await box.get(key);
+    // Use namespaced key: {env}::{key}
+    final namespacedKey = '${ctx.env}::$key';
+    final rawResult = await box.get(namespacedKey);
     if (rawResult == null) return null;
 
     // Terminal deserialization (e.g., decryption, decompression)
@@ -326,7 +328,9 @@ class HHCtxDirectAccess extends HHCtxDirectAccessI {
       },
     );
 
-    await box.put(key, finalMeta);
+    // Use namespaced key: {env}::{key}
+    final namespacedKey = '${ctx.env}::$key';
+    await box.put(namespacedKey, finalMeta);
   }
 
   @override
@@ -356,7 +360,9 @@ class HHCtxDirectAccess extends HHCtxDirectAccessI {
   Future<void> metaDelete(String key) async {
     final box = await meta;
     if (box == null) return;
-    await box.delete(key);
+    // Use namespaced key: {env}::{key}
+    final namespacedKey = '${ctx.env}::$key';
+    await box.delete(namespacedKey);
   }
 
   @override
@@ -374,7 +380,14 @@ class HHCtxDirectAccess extends HHCtxDirectAccessI {
   Future<void> metaClear() async {
     final box = await meta;
     if (box == null) return;
-    await box.clear();
+    // Only clear keys belonging to this environment (prefix: {env}::)
+    final prefix = '${ctx.env}::';
+    final allKeys = await box.getAllKeys();
+    for (final key in allKeys) {
+      if (key.startsWith(prefix)) {
+        await box.delete(key);
+      }
+    }
   }
 
   // iter keys

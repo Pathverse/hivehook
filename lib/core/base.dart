@@ -45,14 +45,14 @@ class HHiveCore {
     return box;
   }
 
-  /// Retrieves the metadata box for an environment if metadata is enabled.
+  /// Retrieves the shared metadata box if metadata is enabled for the environment.
+  /// All environments share a single `_meta` box with namespaced keys `{env}::{key}`.
   static Future<CollectionBox<String>?> getMetaBox(String env) async {
     final config = HHImmutableConfig.instances[env];
     if (config == null || !config.usesMeta) {
       return null;
     }
-    final boxName = '_meta_$env';
-    return getBox(boxName);
+    return getBox('_meta');
   }
 
   /// Initializes Hive and opens all registered box collections.
@@ -70,11 +70,16 @@ class HHiveCore {
 
     // open box collections
     final List<String> boxes = [];
+    bool anyUsesMeta = false;
     for (final config in HHImmutableConfig.instances.values) {
       boxes.add(config.env);
       if (config.usesMeta) {
-        boxes.add('_meta_${config.env}');
+        anyUsesMeta = true;
       }
+    }
+    // Single shared meta box for all environments
+    if (anyUsesMeta) {
+      boxes.add('_meta');
     }
 
     _hiveBoxCollection = await BoxCollection.open(
@@ -96,13 +101,7 @@ class HHiveCore {
       _openedBoxes.remove(env);
     }
 
-    final metaStore = await getMetaBox(env);
-    if (metaStore != null) {
-      await metaStore.flush();
-      final metaBoxName = '_meta_$env';
-      if (_openedBoxes.containsKey(metaBoxName)) {
-        _openedBoxes.remove(metaBoxName);
-      }
-    }
+    // Note: The shared _meta box is not disposed per-environment.
+    // It will be closed when all environments are disposed or the collection closes.
   }
 }
