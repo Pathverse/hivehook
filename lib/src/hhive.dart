@@ -79,6 +79,46 @@ class HHive {
     return instance;
   }
 
+  /// Creates an HHive instance from a config without global registration.
+  ///
+  /// This is useful for one-off scenarios or testing where you don't want
+  /// to pollute the global registry. Each call creates a new instance.
+  ///
+  /// ```dart
+  /// final hive = await HHive.createFromConfig(HiveConfig(
+  ///   env: 'temp',
+  ///   hooks: [myValidationHook],
+  /// ));
+  /// ```
+  static Future<HHive> createFromConfig(HiveConfig config) async {
+    // Register temporarily if not registered
+    final wasRegistered = HHiveCore.configs.containsKey(config.env);
+    if (!wasRegistered) {
+      HHiveCore.register(config);
+      // Ensure initialized
+      if (!HHiveCore.isInitialized) {
+        await HHiveCore.initialize();
+      }
+    }
+
+    // Clear any cached instance to get fresh hooks
+    _instances.remove(config.env);
+
+    // Create with the provided config's hooks
+    final store = await HHiveCore.getStore(config.env);
+    final hooks = [...HHiveCore.globalHooks, ...config.hooks];
+    final engine = HiEngine(hooks: hooks);
+
+    final instance = HHive._(
+      config: config,
+      engine: engine,
+      store: store,
+    );
+
+    _instances[config.env] = instance;
+    return instance;
+  }
+
   /// Clears the cached instance for an environment.
   ///
   /// Next call to [create] will create a fresh instance.

@@ -76,7 +76,7 @@ class HHiveCore {
   ///   throw JsonUnsupportedObjectError(obj);
   /// };
   /// ```
-  static JsonEncoder? globalJsonEncoder;
+  static HiveJsonEncoder? globalJsonEncoder;
 
   /// Global JSON decoder for all environments using JSON storage mode.
   ///
@@ -89,7 +89,7 @@ class HHiveCore {
   ///   return value;
   /// };
   /// ```
-  static JsonDecoder? globalJsonDecoder;
+  static HiveJsonDecoder? globalJsonDecoder;
 
   /// Global hooks applied to all environments.
   ///
@@ -106,6 +106,7 @@ class HHiveCore {
   static final Map<String, BoxCollection> _collections = {};
   static final Map<String, CollectionBox<dynamic>> _openedBoxes = {};
   static final Set<int> _registeredAdapterTypeIds = {};
+  static final Set<String> _openedCollectionNames = {};
   static bool _initialized = false;
 
   /// Registered configurations.
@@ -114,17 +115,37 @@ class HHiveCore {
   /// Whether [initialize] has been called.
   static bool get isInitialized => _initialized;
 
+  /// Whether a specific BoxCollection has been opened.
+  static bool isCollectionOpened(String collectionName) =>
+      _openedCollectionNames.contains(collectionName);
+
   /// Register a configuration.
   ///
-  /// Must be called before [initialize] for BoxCollection types.
+  /// Rules:
+  /// - Each env can only be registered once
+  /// - BoxCollection: cannot add to already-opened collection
+  /// - Box: can register anytime (lazy opening)
   static void register(HiveConfig config) {
     config.validate();
-    if (_initialized && config.type == HiveBoxType.boxCollection) {
+
+    // Enforce unique env
+    if (_configs.containsKey(config.env)) {
       throw StateError(
-        'Cannot register BoxCollection config after initialization. '
-        'Register all BoxCollection configs before calling initialize().',
+        'Env "${config.env}" is already registered. '
+        'Each env can only be registered once.',
       );
     }
+
+    // For BoxCollection: check if collection is already opened
+    if (config.type == HiveBoxType.boxCollection) {
+      if (_openedCollectionNames.contains(config.boxCollectionName)) {
+        throw StateError(
+          'BoxCollection "${config.boxCollectionName}" is already opened. '
+          'Cannot add new boxes to an opened collection.',
+        );
+      }
+    }
+
     _configs[config.env] = config;
   }
 
@@ -173,49 +194,7 @@ class HHiveCore {
       final collectionName = entry.key;
       final configs = entry.value;
 
-      // Collect box names
-      final boxNames = <String>{};
-      bool anyMeta = false;
-      for (final config in configs) {
-        boxNames.add(config.env);
-        if (config.withMeta) anyMeta = true;
-      }
-      if (anyMeta) boxNames.add('_meta');
-
-      // Open collection
-      final collection = await BoxCollection.open(
-        collectionName,
-        boxNames,
-        path: HIVE_INIT_PATH,
-        key: HIVE_CIPHER,
-      );
-      _collections[collectionName] = collection;
-
-      // Create HBoxStore for each config
-      CollectionBox<String>? metaBox;
-      if (anyMeta) {
-        metaBox = await collection.openBox<String>('_meta');
-        _openedBoxes['$collectionName::_meta'] = metaBox;
-      }
-
-      for (final config in configs) {
-        // Use dynamic for native mode, String for json mode
-        final CollectionBox<dynamic> box;
-        if (config.storageMode == HiveStorageMode.native) {
-          box = await collection.openBox<dynamic>(config.env);
-        } else {
-          box = await collection.openBox<String>(config.env);
-        }
-        _openedBoxes['$collectionName::${config.env}'] = box;
-        _stores[config.env] = HBoxStore(
-          box: box,
-          metaBox: config.withMeta ? metaBox : null,
-          env: config.env,
-          storageMode: config.storageMode,
-          jsonEncoder: config.jsonEncoder ?? globalJsonEncoder,
-          jsonDecoder: config.jsonDecoder ?? globalJsonDecoder,
-        );
-      }
+      await _openBoxCollection(collectionName, configs);
     }
 
     // Initialize web debug if enabled
@@ -224,10 +203,83 @@ class HHiveCore {
     }
   }
 
+  /// Opens a BoxCollection and creates stores for all its configs.
+  ///
+  /// This is called during [initialize] for pre-registered collections,
+  /// or lazily when first accessing a store from an unopened collection.
+  static Future<void> _openBoxCollection(
+    String collectionName,
+    List<HiveConfig> configs,
+  ) async {
+    // Already opened?
+    if (_openedCollectionNames.contains(collectionName)) return;
+
+    // Collect box names (use boxName, not env)
+    final boxNames = <String>{};
+    bool anyMeta = false;
+    for (final config in configs) {
+      boxNames.add(config.boxName);
+      if (config.withMeta) anyMeta = true;
+    }
+    if (anyMeta) boxNames.add('_meta');
+
+    // Open collection
+    final collection = await BoxCollection.open(
+      collectionName,
+      boxNames,
+      path: HIVE_INIT_PATH,
+      key: HIVE_CIPHER,
+    );
+    _collections[collectionName] = collection;
+
+    // Mark as opened (locks further registration)
+    _openedCollectionNames.add(collectionName);
+
+    // Create HBoxStore for each config
+    // Track opened boxes by boxName to share between envs
+    final openedDataBoxes = <String, CollectionBox<dynamic>>{};
+    CollectionBox<String>? metaBox;
+    if (anyMeta) {
+      metaBox = await collection.openBox<String>('_meta');
+      _openedBoxes['$collectionName::_meta'] = metaBox;
+    }
+
+    for (final config in configs) {
+      // Open or reuse box by boxName
+      CollectionBox<dynamic> box;
+      final boxKey = '$collectionName::${config.boxName}';
+
+      if (openedDataBoxes.containsKey(config.boxName)) {
+        box = openedDataBoxes[config.boxName]!;
+      } else {
+        // Use dynamic for native mode, String for json mode
+        if (config.storageMode == HiveStorageMode.native) {
+          box = await collection.openBox<dynamic>(config.boxName);
+        } else {
+          box = await collection.openBox<String>(config.boxName);
+        }
+        openedDataBoxes[config.boxName] = box;
+        _openedBoxes[boxKey] = box;
+      }
+
+      _stores[config.env] = HBoxStore(
+        box: box,
+        metaBox: config.withMeta ? metaBox : null,
+        env: config.env,
+        storageMode: config.storageMode,
+        jsonEncoder: config.jsonEncoder ?? globalJsonEncoder,
+        jsonDecoder: config.jsonDecoder ?? globalJsonDecoder,
+      );
+    }
+  }
+
   /// Get the store for an environment.
   ///
-  /// For [HiveBoxType.boxCollection], returns the pre-created store.
-  /// For [HiveBoxType.box], creates the store lazily if not exists.
+  /// For [HiveBoxType.boxCollection]:
+  /// - If collection is opened, returns the store
+  /// - If collection is not opened, opens it first (locks further registration)
+  ///
+  /// For [HiveBoxType.box], creates the store lazily.
   static Future<HBoxStore> getStore(String env) async {
     // Return existing store
     if (_stores.containsKey(env)) {
@@ -248,10 +300,28 @@ class HHiveCore {
       return _createBoxStore(config);
     }
 
-    // For boxCollection type, should have been created during initialize
+    // For boxCollection type, check if collection needs to be opened
+    final collectionName = config.boxCollectionName;
+    if (!_openedCollectionNames.contains(collectionName)) {
+      // Collect all configs for this collection
+      final collectionConfigs = _configs.values
+          .where((c) =>
+              c.type == HiveBoxType.boxCollection &&
+              c.boxCollectionName == collectionName)
+          .toList();
+
+      // Open the collection (this locks further registration)
+      await _openBoxCollection(collectionName, collectionConfigs);
+    }
+
+    // Now the store should exist
+    if (_stores.containsKey(env)) {
+      return _stores[env]!;
+    }
+
+    // Should not happen, but defensive
     throw StateError(
-      'Store for env "$env" not found. '
-      'Ensure HHiveCore.initialize() was called after registering the config.',
+      'Store for env "$env" not found after opening collection.',
     );
   }
 
@@ -280,6 +350,7 @@ class HHiveCore {
     _stores.clear();
     _collections.clear();
     _openedBoxes.clear();
+    _openedCollectionNames.clear();
     _registeredAdapterTypeIds.clear();
     _initialized = false;
     // Note: Does not clear global defaults (globalTypeAdapters, globalHooks, etc.)

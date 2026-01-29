@@ -69,8 +69,8 @@ Future<HHive> createTestHive({
   bool withMeta = true,
   List<HiHook>? hooks,
   HiveStorageMode storageMode = HiveStorageMode.json,
-  JsonEncoder? jsonEncoder,
-  JsonDecoder? jsonDecoder,
+  HiveJsonEncoder? jsonEncoder,
+  HiveJsonDecoder? jsonDecoder,
 }) async {
   env ??= generateEnvName();
   

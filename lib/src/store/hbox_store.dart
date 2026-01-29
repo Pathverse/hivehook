@@ -29,10 +29,10 @@ class HBoxStore implements HiStore<String, dynamic> {
   final HiveStorageMode storageMode;
 
   /// Custom JSON encoder for non-JSON-serializable types.
-  final JsonEncoder? jsonEncoder;
+  final HiveJsonEncoder? jsonEncoder;
 
   /// Custom JSON decoder/reviver for non-JSON-serializable types.
-  final JsonDecoder? jsonDecoder;
+  final HiveJsonDecoder? jsonDecoder;
 
   /// Creates an HBoxStore with the given Hive boxes.
   HBoxStore({
@@ -56,9 +56,23 @@ class HBoxStore implements HiStore<String, dynamic> {
   /// Decodes a JSON string to value.
   dynamic _decode(String raw) => jsonDecode(raw, reviver: jsonDecoder);
 
+  /// Namespaced data key: {env}::{key}
+  /// This prevents cross-contamination between envs sharing the same box.
+  String _dataKey(String key) => '$env::$key';
+
+  /// Strips the env prefix from a stored key.
+  /// Returns null if the key doesn't belong to this env.
+  String? _stripPrefix(String storedKey) {
+    final prefix = '$env::';
+    if (storedKey.startsWith(prefix)) {
+      return storedKey.substring(prefix.length);
+    }
+    return null;
+  }
+
   @override
   Future<dynamic> get(String key) async {
-    final raw = await box.get(key);
+    final raw = await box.get(_dataKey(key));
     if (raw == null) return null;
     return isJsonMode ? _decode(raw as String) : raw;
   }
@@ -66,32 +80,45 @@ class HBoxStore implements HiStore<String, dynamic> {
   @override
   Future<void> put(String key, dynamic value) async {
     final storedValue = isJsonMode ? _encode(value) : value;
-    await box.put(key, storedValue);
+    await box.put(_dataKey(key), storedValue);
   }
 
   @override
   Future<void> delete(String key) async {
-    await box.delete(key);
+    await box.delete(_dataKey(key));
   }
 
   @override
   Future<void> clear() async {
-    await box.clear();
+    // Only clear keys for this env (not the entire box)
+    final prefix = '$env::';
+    final allKeys = await box.getAllKeys();
+    for (final key in allKeys) {
+      if (key.startsWith(prefix)) {
+        await box.delete(key);
+      }
+    }
   }
 
   @override
   Stream<String> keys() async* {
     final allKeys = await box.getAllKeys();
-    for (final key in allKeys) {
-      yield key;
+    for (final storedKey in allKeys) {
+      final key = _stripPrefix(storedKey);
+      if (key != null) {
+        yield key;
+      }
     }
   }
 
   @override
   Stream<dynamic> values() async* {
     final allValues = await box.getAllValues();
-    for (final value in allValues.values) {
-      yield isJsonMode ? _decode(value as String) : value;
+    for (final entry in allValues.entries) {
+      // Only yield values for this env
+      if (_stripPrefix(entry.key) != null) {
+        yield isJsonMode ? _decode(entry.value as String) : entry.value;
+      }
     }
   }
 
@@ -99,8 +126,11 @@ class HBoxStore implements HiStore<String, dynamic> {
   Stream<MapEntry<String, dynamic>> entries() async* {
     final allValues = await box.getAllValues();
     for (final entry in allValues.entries) {
-      final value = isJsonMode ? _decode(entry.value as String) : entry.value;
-      yield MapEntry(entry.key, value);
+      final key = _stripPrefix(entry.key);
+      if (key != null) {
+        final value = isJsonMode ? _decode(entry.value as String) : entry.value;
+        yield MapEntry(key, value);
+      }
     }
   }
 

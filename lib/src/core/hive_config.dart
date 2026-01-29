@@ -3,11 +3,11 @@ import 'package:hihook/src/hook/hook.dart';
 
 /// Custom JSON encoder function.
 /// Called for objects that are not directly JSON-encodable.
-typedef JsonEncoder = Object? Function(dynamic object);
+typedef HiveJsonEncoder = Object? Function(dynamic object);
 
 /// Custom JSON decoder/reviver function.
 /// Called for each key-value pair during decoding.
-typedef JsonDecoder = Object? Function(Object? key, Object? value);
+typedef HiveJsonDecoder = Object? Function(Object? key, Object? value);
 
 /// Storage mode for values.
 enum HiveStorageMode {
@@ -44,8 +44,18 @@ enum HiveBoxType {
 /// );
 /// ```
 class HiveConfig {
-  /// Environment name (also used as box name).
+  /// Environment name (unique identifier for this config).
+  /// 
+  /// Each env can only be registered once. Keys are prefixed with
+  /// `{env}::` to prevent cross-contamination between environments.
   final String env;
+
+  /// Box name for storage (defaults to [env]).
+  /// 
+  /// Multiple envs can share the same boxName (keys are prefixed
+  /// with `{env}::` for isolation). Use this to group related
+  /// environments into a single physical box.
+  final String boxName;
 
   /// Hooks to apply to this environment.
   /// These are hihook hooks, not hivehook v1 hooks.
@@ -98,7 +108,7 @@ class HiveConfig {
   ///   },
   /// )
   /// ```
-  final JsonEncoder? jsonEncoder;
+  final HiveJsonEncoder? jsonEncoder;
 
   /// Custom JSON decoder/reviver for non-JSON-serializable types.
   ///
@@ -118,10 +128,11 @@ class HiveConfig {
   ///   },
   /// )
   /// ```
-  final JsonDecoder? jsonDecoder;
+  final HiveJsonDecoder? jsonDecoder;
 
   const HiveConfig({
     required this.env,
+    String? boxName,
     this.hooks = const [],
     this.type = HiveBoxType.boxCollection,
     this.withMeta = true,
@@ -132,7 +143,7 @@ class HiveConfig {
     this.typeAdapters = const [],
     this.jsonEncoder,
     this.jsonDecoder,
-  });
+  }) : boxName = boxName ?? env;
 
   /// Computed meta box name for box type.
   String get resolvedMetaBoxName => boxMetaName ?? '_${env}Meta';
