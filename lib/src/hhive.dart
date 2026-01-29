@@ -274,6 +274,52 @@ class HHive {
     }
   }
 
+  // --- Cache Utilities ---
+
+  /// Gets cached value or computes and caches it if not found.
+  ///
+  /// This is a convenience method for the common cache-aside pattern:
+  /// 1. Try to get existing value
+  /// 2. If found, return it
+  /// 3. If not found, compute new value via [computeValue]
+  /// 4. Store the computed value (unless null and [cacheOnNullValues] is false)
+  /// 5. Return the value
+  ///
+  /// ```dart
+  /// final user = await hive.ifNotCached<Map>(
+  ///   'user:123',
+  ///   () async => await fetchUserFromApi(123),
+  ///   meta: {'ttl': 3600},
+  /// );
+  /// ```
+  ///
+  /// Set [cacheOnNullValues] to `true` if you want to cache null results
+  /// (useful to avoid repeated lookups for known-missing keys).
+  Future<T?> ifNotCached<T>(
+    String key,
+    Future<T?> Function() computeValue, {
+    Map<String, dynamic>? meta,
+    bool cacheOnNullValues = false,
+  }) async {
+    // Try to get existing value
+    final existing = await get<T>(key);
+    if (existing != null) {
+      return existing;
+    }
+
+    // Compute new value
+    final newValue = await computeValue();
+
+    // Don't cache null unless explicitly requested
+    if (newValue == null && !cacheOnNullValues) {
+      return null;
+    }
+
+    // Store and return
+    await put<T?>(key, newValue, meta: meta);
+    return newValue;
+  }
+
   // --- Iteration ---
 
   /// Returns a stream of all keys.
