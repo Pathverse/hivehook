@@ -1,6 +1,6 @@
 # HiveHook
 
-Add validation, caching, encryption, and logging to [Hive](https://pub.dev/packages/hive_ce) with zero boilerplate.
+A minimal [Hive CE](https://pub.dev/packages/hive_ce) storage adapter with hook-based lifecycle management via [hihook](https://pub.dev/packages/hihook).
 
 ## Quick Start
 
@@ -8,84 +8,125 @@ Add validation, caching, encryption, and logging to [Hive](https://pub.dev/packa
 import 'package:hivehook/hivehook.dart';
 
 void main() async {
-  // 1. Initialize
-  final config = HHConfig(env: 'myapp');
+  // 1. Register environment
+  HHiveCore.register(HiveConfig(
+    env: 'myapp',
+    withMeta: true,
+  ));
+
+  // 2. Initialize
   await HHiveCore.initialize();
-  
-  // 2. Use like normal Hive
-  final hive = HHive(config: config.finalize());
-  await hive.put('user', 'John');
-  final user = await hive.get('user'); // 'John'
+
+  // 3. Create facade
+  final hive = await HHive.create('myapp');
+
+  // 4. CRUD operations
+  await hive.put('user', {'name': 'John'});
+  final user = await hive.get('user'); // {'name': 'John'}
+  await hive.delete('user');
 }
 ```
 
-## Common Use Cases
+## Architecture
 
-### Auto-Expiring Cache (TTL)
-
-```dart
-final config = HHConfig(env: 'cache');
-config.installPlugin(createTTLPlugin(defaultTTLSeconds: 3600)); // 1 hour
-final hive = HHive(config: config.finalize());
-
-await hive.put('session', data);              // Expires in 1 hour
-await hive.put('token', jwt, meta: {'ttl': 300}); // Custom 5-min TTL
+```
+User Code → HHive (facade) → HiEngine (hooks) → HBoxStore (pure) → Hive CE
 ```
 
-### Size-Limited Cache (LRU)
+- **HHive** - User-facing facade that emits events to hihook
+- **HHiveCore** - Centralized Hive initialization & lifecycle
+- **HBoxStore** - Pure HiStore implementation (no hook logic)
+- **HiveConfig** - Configuration for environments
+
+## Environment Isolation
+
+Multiple environments can share the same physical box while remaining isolated:
 
 ```dart
-final config = HHConfig(env: 'cache');
-config.installPlugin(createLRUPlugin(maxSize: 100));
-final hive = HHive(config: config.finalize());
+// Register multiple envs sharing one box
+HHiveCore.register(HiveConfig(env: 'users_v1', boxName: 'users'));
+HHiveCore.register(HiveConfig(env: 'users_v2', boxName: 'users'));
+await HHiveCore.initialize();
 
-// Automatically evicts oldest items when cache exceeds 100 entries
-await hive.put('item', value);
+final v1 = await HHive.create('users_v1');
+final v2 = await HHive.create('users_v2');
+
+await v1.put('alice', {'role': 'admin'});  // Stored as users_v1::alice
+await v2.put('alice', {'role': 'guest'});  // Stored as users_v2::alice
+
+// Each env sees only its own keys
+```
+
+## Hooks
+
+Hooks use the hihook `HiHook` pattern with events and handlers:
+
+### Value Transformation
+
+```dart
+final hive = await HHive.createFromConfig(HiveConfig(
+  env: 'orders',
+  hooks: [
+    HiHook(
+      uid: 'tax_calculator',
+      events: ['put'],
+      handler: (payload, ctx) {
+        final value = payload.value as Map<String, dynamic>?;
+        if (value != null && value.containsKey('amount')) {
+          final amount = value['amount'] as num;
+          final transformed = Map<String, dynamic>.from(value);
+          transformed['tax'] = (amount * 0.1).toDouble();
+          transformed['total'] = (amount * 1.1).toDouble();
+          return HiContinue(payload: payload.copyWith(value: transformed));
+        }
+        return const HiContinue();
+      },
+    ),
+  ],
+));
+
+await hive.put('order', {'item': 'Widget', 'amount': 100.0});
+// Stored with tax: 10.0, total: 110.0
 ```
 
 ### Validation
 
 ```dart
-final config = HHConfig(
+final hive = await HHive.createFromConfig(HiveConfig(
   env: 'users',
-  actionHooks: [
-    HActionHook(
-      latches: [HHLatch.pre(triggerType: TriggerType.valueWrite)],
-      action: (ctx) async {
-        if (ctx.payload.value == null) {
-          throw ArgumentError('Value cannot be null');
+  hooks: [
+    HiHook(
+      uid: 'email_validator',
+      events: ['put'],
+      handler: (payload, ctx) {
+        final value = payload.value as Map<String, dynamic>?;
+        if (value != null) {
+          final email = value['email'] as String?;
+          if (email == null || !email.contains('@')) {
+            return HiBreak(returnValue: {'error': 'Invalid email'});
+          }
         }
+        return const HiContinue();
       },
     ),
   ],
-);
+));
+
+await hive.put('user:1', {'email': 'invalid'}); // Blocked by hook
+await hive.put('user:2', {'email': 'a@b.com'}); // Stored successfully
 ```
 
-### Encryption
+### Logging
 
 ```dart
-final config = HHConfig(
-  env: 'secure',
-  serializationHooks: [
-    SerializationHook(
-      id: 'aes',
-      serialize: (ctx) async => encrypt(ctx.payload.value),
-      deserialize: (ctx) async => decrypt(ctx.payload.value),
-    ),
-  ],
-);
-```
-
-### Combine Multiple Plugins
-
-```dart
-final config = HHConfig(env: 'cache');
-config.installPlugin(createTTLPlugin(defaultTTLSeconds: 300));
-config.installPlugin(createLRUPlugin(maxSize: 50));
-final hive = HHive(config: config.finalize());
-
-// Both TTL expiration AND LRU eviction active
-await hive.put('data', value);
+HiHook(
+  uid: 'logger',
+  events: ['put', 'get', 'delete'],
+  handler: (payload, ctx) {
+    print('[${payload.event}] key=${payload.key}');
+    return const HiContinue();
+  },
+)
 ```
 
 ## API Reference
@@ -93,40 +134,53 @@ await hive.put('data', value);
 ### Core Methods
 
 ```dart
-await hive.put('key', value);           // Store value
+await hive.put('key', value);            // Store value
 await hive.get('key');                   // Retrieve value
 await hive.delete('key');                // Delete key
 await hive.pop('key');                   // Get + delete
-await hive.clear();                      // Clear all
+await hive.clear();                      // Clear this env's keys
 
 // With metadata
 await hive.put('key', value, meta: {'ttl': 300});
+await hive.getWithMeta('key');           // Get value + metadata
 await hive.getMeta('key');               // Get metadata only
 await hive.setMeta('key', {'custom': 1}); // Update metadata
+
+// Iteration
+await for (final key in hive.keys()) { ... }
 ```
 
-### Hook Triggers
+### HiveConfig Options
 
-| Trigger | When |
-|---------|------|
-| `valueWrite` | Before/after `put()` |
-| `valueRead` | Before/after `get()` |
-| `onDelete` | Before/after `delete()` |
-| `onPop` | Before/after `pop()` |
-| `onClear` | Before/after `clear()` |
+| Option | Description |
+|--------|-------------|
+| `env` | Unique environment ID (required) |
+| `boxName` | Physical box name (default: env) |
+| `boxCollectionName` | BoxCollection name (default: 'hivehooks') |
+| `hooks` | List of HiHook to apply |
+| `withMeta` | Enable metadata storage |
+| `storageMode` | `json` (default) or `native` |
+| `typeAdapters` | TypeAdapters for native mode |
+| `jsonEncoder` | Custom JSON encoder |
+| `jsonDecoder` | Custom JSON decoder |
 
-## Web Debug Mode
+### Hook Events
 
-When `HHiveCore.DEBUG_OBJ` is enabled (auto-detected via `kDebugMode`), original objects are stored to `window.hiveDebug` for easy inspection in browser DevTools:
+| Event | When |
+|-------|------|
+| `put` | Before/after `put()` |
+| `get` | Before/after `get()` |
+| `delete` | Before/after `delete()` |
+| `pop` | Before/after `pop()` |
+| `clear` | Before/after `clear()` |
 
-```js
-// In browser console:
-window.hiveDebug                    // View all stored objects
-window.hiveDebug['myEnv::myKey']    // View specific key
-Object.keys(window.hiveDebug)       // List all keys
-```
+### Hook Results
 
-> **Note**: Debug storage only works on web platform.
+| Result | Behavior |
+|--------|----------|
+| `HiContinue()` | Continue to next hook / storage |
+| `HiContinue(payload: ...)` | Continue with modified payload |
+| `HiBreak(returnValue: ...)` | Stop pipeline, return value |
 
 ## Installation
 
