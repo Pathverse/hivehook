@@ -132,8 +132,8 @@ Object.keys(window.hiveDebug)       // List all keys
 
 ```yaml
 dependencies:
-  hivehook: ^0.2.0
-  hive_ce: ^2.10.0
+  hivehook: ^1.0.0-alpha.1
+  hive_ce: ^2.19.1
 ```
 
 See [hive_ce on pub.dev](https://pub.dev/packages/hive_ce) for Hive documentation.
