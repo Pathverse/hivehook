@@ -59,6 +59,13 @@
 | Example app scenario | ✅ |
 | Test file cleanup | ✅ |
 
+### ✅ Part 7: Path Parameter (COMPLETE)
+| Feature | Status |
+|---------|--------|
+| Optional `path` param on `initialize()` | ✅ |
+| Backward compatible (no breaking changes) | ✅ |
+| Falls back to `HIVE_INIT_PATH` if not provided | ✅ |
+
 ## What's Left
 
 | Task | Priority |

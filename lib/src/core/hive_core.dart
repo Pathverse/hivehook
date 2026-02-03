@@ -118,6 +118,7 @@ class HHiveCore {
   static final Set<int> _registeredAdapterTypeIds = {};
   static final Set<String> _openedCollectionNames = {};
   static bool _initialized = false;
+  static String? _effectiveInitPath;
 
   /// Registered configurations.
   static Map<String, HiveConfig> get configs => Map.unmodifiable(_configs);
@@ -161,15 +162,22 @@ class HHiveCore {
 
   /// Initialize Hive and open all registered BoxCollections.
   ///
+  /// [path] - Optional path for Hive storage (non-web platforms).
+  ///          If not provided, uses [HIVE_INIT_PATH] static field.
+  ///
   /// For [HiveBoxType.boxCollection], all boxes are opened at once.
   /// For [HiveBoxType.box], boxes are opened lazily on first access.
-  static Future<void> initialize() async {
+  static Future<void> initialize({String? path}) async {
     if (_initialized) return;
     _initialized = true;
 
+    // Use provided path or fall back to static field
+    final initPath = path ?? HIVE_INIT_PATH;
+    _effectiveInitPath = initPath;
+
     // Initialize Hive
     Hive.init(
-      HIVE_INIT_PATH,
+      initPath,
       backendPreference: HIVE_STORAGE_BACKEND_PREFERENCE,
     );
 
@@ -237,7 +245,7 @@ class HHiveCore {
     final collection = await BoxCollection.open(
       collectionName,
       boxNames,
-      path: HIVE_INIT_PATH,
+      path: _effectiveInitPath,
       key: HIVE_CIPHER,
     );
     _collections[collectionName] = collection;
@@ -336,10 +344,15 @@ class HHiveCore {
   }
 
   /// Creates an HBoxStore for a Box type config (lazy initialization).
+  ///
+  /// TODO: Implement Box type support
+  /// When implementing, consider:
+  /// - BoxCollection creates folders: {path}/{collectionName}/
+  /// - Regular Box creates files: {path}/{boxName}.hive
+  /// - They can coexist at the same path if names don't collide
+  /// - May want to add validation to prevent name collisions
+  /// - Will need to use Hive.openBox() instead of BoxCollection.open()
   static Future<HBoxStore> _createBoxStore(HiveConfig config) async {
-    // For individual Box type, we need to use regular Hive boxes
-    // wrapped in a CollectionBox-compatible interface
-    // TODO: Implement Box type support
     throw UnimplementedError(
       'Individual Box support not yet implemented. '
       'Use HiveBoxType.boxCollection for now.',
@@ -363,6 +376,7 @@ class HHiveCore {
     _openedCollectionNames.clear();
     _registeredAdapterTypeIds.clear();
     _initialized = false;
+    _effectiveInitPath = null;
     // Note: Does not clear global defaults (globalTypeAdapters, globalHooks, etc.)
   }
 

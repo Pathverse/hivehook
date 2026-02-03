@@ -31,7 +31,7 @@ void main() {
         boxCollectionName: collectionName,
       ));
 
-      await HHiveCore.initialize();
+      await initWithTempPath();
 
       // Collection is now opened, cannot add to it
       expect(
@@ -56,7 +56,7 @@ void main() {
         boxCollectionName: collection1,
       ));
 
-      await HHiveCore.initialize();
+      await initWithTempPath();
 
       // collection1 is opened, but collection2 is not
       // Should be able to register to collection2
@@ -78,7 +78,7 @@ void main() {
         boxCollectionName: collection1,
       ));
 
-      await HHiveCore.initialize();
+      await initWithTempPath();
 
       // Register to collection2 (not yet opened)
       HHiveCore.register(HiveConfig(
@@ -141,7 +141,7 @@ void main() {
         boxCollectionName: collectionName,
       ));
 
-      await HHiveCore.initialize();
+      await initWithTempPath();
 
       final usersHive = await HHive.create('users');
       final ordersHive = await HHive.create('orders');
@@ -166,7 +166,7 @@ void main() {
         boxCollectionName: 'collection_b',
       ));
 
-      await HHiveCore.initialize();
+      await initWithTempPath();
 
       final usersHive = await HHive.create('users');
       final ordersHive = await HHive.create('orders');
@@ -197,7 +197,7 @@ void main() {
         boxCollectionName: collection1,
       ));
 
-      await HHiveCore.initialize();
+      await initWithTempPath();
 
       // Register to collection2 after init
       HHiveCore.register(HiveConfig(
@@ -224,7 +224,7 @@ void main() {
 
       expect(HHiveCore.isCollectionOpened(collectionName), isFalse);
 
-      await HHiveCore.initialize();
+      await initWithTempPath();
 
       expect(HHiveCore.isCollectionOpened(collectionName), isTrue);
     });
@@ -253,7 +253,7 @@ void main() {
         boxCollectionName: collectionName,
       ));
 
-      await HHiveCore.initialize();
+      await initWithTempPath();
 
       final v1 = await HHive.create('v1');
       final v2 = await HHive.create('v2');
@@ -276,7 +276,7 @@ void main() {
     });
 
     test('Box type can be registered anytime', () async {
-      await HHiveCore.initialize();
+      await initWithTempPath();
 
       // Box type allowed after init
       expect(
@@ -303,7 +303,7 @@ void main() {
         type: HiveBoxType.box,
       ));
 
-      await HHiveCore.initialize();
+      await initWithTempPath();
 
       expect(
         () async => await HHiveCore.getStore('lazy'),
@@ -331,7 +331,7 @@ void main() {
 
       expect(HHiveCore.isInitialized, isFalse);
 
-      await HHiveCore.initialize();
+      await initWithTempPath();
 
       expect(HHiveCore.isInitialized, isTrue);
     });

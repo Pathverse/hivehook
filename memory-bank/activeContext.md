@@ -4,7 +4,45 @@
 
 ### ✅ 125 Tests Passing
 
-Core implementation complete with env isolation, lazy BoxCollection opening, and **meta hooks**.
+Core implementation complete with env isolation, lazy BoxCollection opening, **meta hooks**, **path parameter**, and **test isolation**.
+
+## Recent: Test File Isolation (2026-02-02)
+
+Fixed test pollution - Hive collection files were being created in project directory instead of temp:
+
+**Changes:**
+- Added `initWithTempPath()` helper for tests that register configs manually
+- Updated all direct `HHiveCore.initialize()` calls in tests to use helpers
+- Tests now use `Directory.systemTemp.path` for Hive storage
+- `_effectiveInitPath` stored in `HHiveCore` and used by `BoxCollection.open()`
+
+**Test helpers:**
+```dart
+// For tests that need custom registration before init
+await initWithTempPath();
+
+// For simple tests with configs
+await initHiveCore(configs: [...]);
+
+// For single-env tests
+final hive = await createTestHive();
+```
+
+## Recent: Path Parameter for initialize() (2026-02-02)
+
+Added optional `path` parameter to `HHiveCore.initialize()` for non-web platforms:
+
+```dart
+// Option 1: Pass path directly
+await HHiveCore.initialize(path: '/my/storage/path');
+
+// Option 2: Set static field (existing behavior)
+HHiveCore.HIVE_INIT_PATH = '/my/storage/path';
+await HHiveCore.initialize();
+
+// Option 3: No path for web
+await HHiveCore.initialize();
+```
 
 ## Recent: Meta Hooks Implementation (2026-02-02)
 
@@ -103,6 +141,8 @@ await h2.put('key', 'b');  // Stored as v2::key
 - [x] Meta hooks implementation
 - [x] Example app with meta hooks demo
 - [x] Test file cleanup automation
+- [x] Path parameter for initialize()
+- [x] Test isolation (temp directory)
 - [ ] TTL/LRU plugin integration
 - [ ] Web debug support
 - [ ] HiveBoxType.box implementation

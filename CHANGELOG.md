@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0-alpha.3
+
+- improved testing
+
 ## 1.0.0-alpha.2
 
 - Added meta hooks for metadata transformation and encryption

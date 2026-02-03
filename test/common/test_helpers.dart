@@ -9,14 +9,25 @@ import 'package:hivehook/hivehook.dart';
 /// Random number generator for unique names.
 final _random = Random.secure();
 
-/// Base temp path for test files.
-String get tempPath =>
-    path.join(Directory.current.path, '.dart_tool', 'test', 'tmp');
+/// Base temp path for test files (uses system temp directory).
+String get tempPath => path.join(
+    Directory.systemTemp.path,
+    'hivehook_test_${DateTime.now().millisecondsSinceEpoch}',
+  );
+
+/// Cached temp path for the current test run.
+String? _currentTempPath;
+
+/// Gets or creates the temp path for the current test run.
+String getOrCreateTempPath() {
+  _currentTempPath ??= tempPath;
+  return _currentTempPath!;
+}
 
 /// Creates a unique temp directory for test isolation.
 Future<Directory> getTempDir() async {
   final name = _random.nextInt(1 << 30);
-  final dir = Directory(path.join(tempPath, '${name}_tmp'));
+  final dir = Directory(path.join(getOrCreateTempPath(), '${name}_tmp'));
   if (await dir.exists()) {
     await dir.delete(recursive: true);
   }
@@ -36,51 +47,23 @@ String generateCollectionName() {
   return 'collection$id';
 }
 
-/// Cleans up all Hive test artifacts from the workspace root.
+/// Cleans up all Hive test artifacts.
 /// 
 /// Deletes:
-/// - All collection* folders
-/// - All *.hive and *.lock files in workspace root
-/// - The .dart_tool/test/tmp folder
+/// - The system temp test folder
+/// - Resets the cached temp path
 Future<void> cleanupHiveFiles() async {
-  final workspaceDir = Directory.current;
-  
-  // Clean collection* folders in workspace root
-  await for (final entity in workspaceDir.list()) {
-    if (entity is Directory) {
-      final name = path.basename(entity.path);
-      if (name.startsWith('collection')) {
-        try {
-          await entity.delete(recursive: true);
-        } catch (_) {
-          // Ignore errors (file in use, etc.)
-        }
-      }
-    }
-  }
-  
-  // Clean .hive and .lock files in workspace root
-  await for (final entity in workspaceDir.list()) {
-    if (entity is File) {
-      final name = path.basename(entity.path);
-      if (name.endsWith('.hive') || name.endsWith('.lock')) {
-        try {
-          await entity.delete();
-        } catch (_) {
-          // Ignore errors
-        }
-      }
-    }
-  }
-  
   // Clean temp test folder
-  final tempDir = Directory(tempPath);
-  if (await tempDir.exists()) {
-    try {
-      await tempDir.delete(recursive: true);
-    } catch (_) {
-      // Ignore errors
+  if (_currentTempPath != null) {
+    final tempDir = Directory(_currentTempPath!);
+    if (await tempDir.exists()) {
+      try {
+        await tempDir.delete(recursive: true);
+      } catch (_) {
+        // Ignore errors
+      }
     }
+    _currentTempPath = null;
   }
 }
 
@@ -101,7 +84,6 @@ Future<String> initHiveCore({
   List<HiveConfig>? configs,
 }) async {
   final dir = await getTempDir();
-  HHiveCore.HIVE_INIT_PATH = dir.path;
   
   if (configs != null) {
     for (final config in configs) {
@@ -109,7 +91,17 @@ Future<String> initHiveCore({
     }
   }
   
-  await HHiveCore.initialize();
+  await HHiveCore.initialize(path: dir.path);
+  return dir.path;
+}
+
+/// Initializes HHiveCore with a temp directory path.
+///
+/// Use this when you need to register configs manually before init.
+/// Returns the temp directory path that was used.
+Future<String> initWithTempPath() async {
+  final dir = await getTempDir();
+  await HHiveCore.initialize(path: dir.path);
   return dir.path;
 }
 
@@ -118,23 +110,26 @@ Future<HHive> createTestHive({
   String? env,
   bool withMeta = true,
   List<HiHook>? hooks,
+  List<HiHook>? metaHooks,
   HiveStorageMode storageMode = HiveStorageMode.json,
   HiveJsonEncoder? jsonEncoder,
   HiveJsonDecoder? jsonDecoder,
 }) async {
   env ??= generateEnvName();
+  final dir = await getTempDir();
   
   HHiveCore.register(HiveConfig(
     env: env,
     boxCollectionName: generateCollectionName(),
     withMeta: withMeta,
     hooks: hooks ?? [],
+    metaHooks: metaHooks ?? [],
     storageMode: storageMode,
     jsonEncoder: jsonEncoder,
     jsonDecoder: jsonDecoder,
   ));
   
-  await HHiveCore.initialize();
+  await HHiveCore.initialize(path: dir.path);
   return HHive.create(env);
 }
 
