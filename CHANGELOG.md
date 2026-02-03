@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.0-alpha.2
+
+- Added meta hooks for metadata transformation and encryption
+- New events: readMeta, writeMeta, deleteMeta, clearMeta
+- Meta-first pattern for efficient TTL checks before value reads
+- Standalone meta methods: getMeta, putMeta, deleteMeta
+
+
 ## 1.0.0-alpha.1
 
 - Rebuilt on HiHook framework for advanced hook composition
