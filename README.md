@@ -22,6 +22,14 @@ void main() async {
 }
 ```
 
+## Features
+
+- 🔌 **Hook-based middleware** - Transform, validate, or intercept operations
+- 🔒 **Meta hooks** - Separate pipeline for metadata (encryption, TTL, audit)
+- 🏠 **Environment isolation** - Multiple envs share storage safely
+- ⚡ **Meta-first pattern** - Efficient TTL checks before value decryption
+- 📦 **Lazy initialization** - BoxCollections open on first access
+
 ## Core API
 
 ```dart
@@ -36,6 +44,11 @@ final data = await hive.ifNotCached('key', () async => fetchData());
 // With metadata
 await hive.put('key', value, meta: {'ttl': 300});
 final record = await hive.getWithMeta('key');  // {value, meta}
+
+// Standalone meta operations
+final meta = await hive.getMeta('key');
+await hive.putMeta('key', {'views': 100});
+await hive.deleteMeta('key');
 ```
 
 ## Adding Hooks
@@ -46,15 +59,55 @@ final hive = await HHive.createFromConfig(HiveConfig(
   hooks: [
     HiHook(
       uid: 'logger',
-      events: ['put', 'get'],
+      events: ['read', 'write'],
       handler: (payload, ctx) {
-        print('[${payload.event}] ${payload.key}');
+        print('${payload.key}: ${payload.value}');
         return const HiContinue();
       },
     ),
   ],
 ));
 ```
+
+## Meta Hooks
+
+Separate hook pipeline for metadata operations:
+
+```dart
+final hive = await HHive.createFromConfig(HiveConfig(
+  env: 'secure',
+  withMeta: true,
+  metaHooks: [
+    // Encrypt metadata on write
+    HiHook(
+      uid: 'meta_encrypt',
+      events: ['writeMeta'],
+      handler: (payload, ctx) {
+        final meta = payload.value as Map<String, dynamic>?;
+        if (meta != null) {
+          final encrypted = encryptMeta(meta);
+          return HiContinue(payload: payload.copyWith(value: encrypted));
+        }
+        return const HiContinue();
+      },
+    ),
+    // TTL check (meta-first pattern)
+    HiHook(
+      uid: 'ttl_check',
+      events: ['readMeta'],
+      handler: (payload, ctx) {
+        final meta = payload.value as Map<String, dynamic>?;
+        if (isExpired(meta)) {
+          return HiBreak(returnValue: null); // Skip value read
+        }
+        return const HiContinue();
+      },
+    ),
+  ],
+));
+```
+
+**Events:** `readMeta`, `writeMeta`, `deleteMeta`, `clearMeta`
 
 ## Environment Isolation
 

@@ -40,6 +40,7 @@ enum HiveBoxType {
 /// final config = HiveConfig(
 ///   env: 'users',
 ///   hooks: [ttlPlugin.hooks, lruPlugin.hooks].expand((h) => h).toList(),
+///   metaHooks: [encryptionPlugin.metaHooks].expand((h) => h).toList(),
 ///   withMeta: true,
 /// );
 /// ```
@@ -57,9 +58,22 @@ class HiveConfig {
   /// environments into a single physical box.
   final String boxName;
 
-  /// Hooks to apply to this environment.
-  /// These are hihook hooks, not hivehook v1 hooks.
+  /// Hooks to apply to value operations in this environment.
+  /// 
+  /// These hooks handle events: 'read', 'write', 'delete', 'clear'.
+  /// For metadata operations, use [metaHooks] instead.
   final List<HiHook> hooks;
+
+  /// Hooks to apply to metadata operations in this environment.
+  /// 
+  /// These hooks handle events: 'readMeta', 'writeMeta', 'deleteMeta', 'clearMeta'.
+  /// Metadata hooks run on a separate engine from value hooks.
+  /// 
+  /// This separation allows plugins to:
+  /// - Encrypt values and metadata independently
+  /// - Check TTL/invalidation before reading values (meta-first pattern)
+  /// - Transform metadata without affecting value processing
+  final List<HiHook> metaHooks;
 
   /// Box type: boxCollection (batch open) or box (individual open).
   final HiveBoxType type;
@@ -134,6 +148,7 @@ class HiveConfig {
     required this.env,
     String? boxName,
     this.hooks = const [],
+    this.metaHooks = const [],
     this.type = HiveBoxType.boxCollection,
     this.withMeta = true,
     this.boxCollectionName = 'hivehooks',

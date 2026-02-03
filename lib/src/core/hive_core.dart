@@ -91,13 +91,23 @@ class HHiveCore {
   /// ```
   static HiveJsonDecoder? globalJsonDecoder;
 
-  /// Global hooks applied to all environments.
+  /// Global hooks applied to all environments for value operations.
   ///
   /// These are prepended to per-config hooks (global runs first).
+  /// Handles events: 'read', 'write', 'delete', 'clear'.
   /// ```dart
   /// HHiveCore.globalHooks.addAll([loggingHook, metricsHook]);
   /// ```
   static final List<HiHook> globalHooks = [];
+
+  /// Global hooks applied to all environments for metadata operations.
+  ///
+  /// These are prepended to per-config metaHooks (global runs first).
+  /// Handles events: 'readMeta', 'writeMeta', 'deleteMeta', 'clearMeta'.
+  /// ```dart
+  /// HHiveCore.globalMetaHooks.addAll([encryptionHook]);
+  /// ```
+  static final List<HiHook> globalMetaHooks = [];
 
   // --- State ---
 
@@ -361,6 +371,7 @@ class HHiveCore {
     await reset();
     globalTypeAdapters.clear();
     globalHooks.clear();
+    globalMetaHooks.clear();
     globalJsonEncoder = null;
     globalJsonDecoder = null;
   }
@@ -368,10 +379,21 @@ class HHiveCore {
   /// Gets merged hooks for an environment (global + config).
   ///
   /// Global hooks run first, then per-config hooks.
+  /// These handle value events: 'read', 'write', 'delete', 'clear'.
   static List<HiHook> getHooksFor(String env) {
     final config = _configs[env];
     if (config == null) return List.unmodifiable(globalHooks);
     return [...globalHooks, ...config.hooks];
+  }
+
+  /// Gets merged meta hooks for an environment (global + config).
+  ///
+  /// Global meta hooks run first, then per-config meta hooks.
+  /// These handle meta events: 'readMeta', 'writeMeta', 'deleteMeta', 'clearMeta'.
+  static List<HiHook> getMetaHooksFor(String env) {
+    final config = _configs[env];
+    if (config == null) return List.unmodifiable(globalMetaHooks);
+    return [...globalMetaHooks, ...config.metaHooks];
   }
 
   /// Manually register a type adapter.

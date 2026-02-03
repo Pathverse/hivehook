@@ -36,12 +36,62 @@ String generateCollectionName() {
   return 'collection$id';
 }
 
+/// Cleans up all Hive test artifacts from the workspace root.
+/// 
+/// Deletes:
+/// - All collection* folders
+/// - All *.hive and *.lock files in workspace root
+/// - The .dart_tool/test/tmp folder
+Future<void> cleanupHiveFiles() async {
+  final workspaceDir = Directory.current;
+  
+  // Clean collection* folders in workspace root
+  await for (final entity in workspaceDir.list()) {
+    if (entity is Directory) {
+      final name = path.basename(entity.path);
+      if (name.startsWith('collection')) {
+        try {
+          await entity.delete(recursive: true);
+        } catch (_) {
+          // Ignore errors (file in use, etc.)
+        }
+      }
+    }
+  }
+  
+  // Clean .hive and .lock files in workspace root
+  await for (final entity in workspaceDir.list()) {
+    if (entity is File) {
+      final name = path.basename(entity.path);
+      if (name.endsWith('.hive') || name.endsWith('.lock')) {
+        try {
+          await entity.delete();
+        } catch (_) {
+          // Ignore errors
+        }
+      }
+    }
+  }
+  
+  // Clean temp test folder
+  final tempDir = Directory(tempPath);
+  if (await tempDir.exists()) {
+    try {
+      await tempDir.delete(recursive: true);
+    } catch (_) {
+      // Ignore errors
+    }
+  }
+}
+
 /// Resets all HHiveCore state and HHive instances.
 ///
 /// Call in setUp/tearDown for test isolation.
+/// Also cleans up Hive file artifacts.
 Future<void> resetHiveState() async {
   await HHiveCore.resetAll();
   HHive.disposeAll();
+  await cleanupHiveFiles();
 }
 
 /// Creates and initializes HHiveCore with a temp directory.

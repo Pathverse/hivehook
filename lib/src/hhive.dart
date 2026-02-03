@@ -10,8 +10,16 @@ import 'store/hbox_store.dart';
 ///
 /// HHive handles:
 /// - Resolving the correct store via [HHiveCore]
-/// - Emitting events to [HiEngine] for hook execution
+/// - Emitting events to [HiEngine] for hook execution (value and meta)
 /// - Providing convenience methods that bundle value + metadata
+///
+/// Event Flow:
+/// - Value events ('read', 'write', 'delete', 'clear') → [engine]
+/// - Meta events ('readMeta', 'writeMeta', 'deleteMeta', 'clearMeta') → [metaEngine]
+///
+/// Meta-First Pattern:
+/// - On read operations, 'readMeta' is emitted BEFORE 'read'
+/// - This allows TTL/invalidation checks before decrypting values
 ///
 /// Usage:
 /// ```dart
@@ -34,8 +42,13 @@ class HHive {
   /// The configuration for this environment.
   final HiveConfig config;
 
-  /// The hihook engine for this environment.
+  /// The hihook engine for value operations in this environment.
+  /// Handles events: 'read', 'write', 'delete', 'clear'.
   final HiEngine engine;
+
+  /// The hihook engine for metadata operations in this environment.
+  /// Handles events: 'readMeta', 'writeMeta', 'deleteMeta', 'clearMeta'.
+  final HiEngine metaEngine;
 
   /// The underlying store.
   final HBoxStore _store;
@@ -43,6 +56,7 @@ class HHive {
   HHive._({
     required this.config,
     required this.engine,
+    required this.metaEngine,
     required HBoxStore store,
   }) : _store = store;
 
@@ -67,11 +81,14 @@ class HHive {
     final store = await HHiveCore.getStore(env);
     // Merge global hooks + config hooks
     final hooks = HHiveCore.getHooksFor(env);
+    final metaHooks = HHiveCore.getMetaHooksFor(env);
     final engine = HiEngine(hooks: hooks);
+    final metaEngine = HiEngine(hooks: metaHooks);
 
     final instance = HHive._(
       config: config,
       engine: engine,
+      metaEngine: metaEngine,
       store: store,
     );
 
@@ -107,11 +124,14 @@ class HHive {
     // Create with the provided config's hooks
     final store = await HHiveCore.getStore(config.env);
     final hooks = [...HHiveCore.globalHooks, ...config.hooks];
+    final metaHooks = [...HHiveCore.globalMetaHooks, ...config.metaHooks];
     final engine = HiEngine(hooks: hooks);
+    final metaEngine = HiEngine(hooks: metaHooks);
 
     final instance = HHive._(
       config: config,
       engine: engine,
+      metaEngine: metaEngine,
       store: store,
     );
 
@@ -141,10 +161,51 @@ class HHive {
 
   /// Gets a value by key.
   ///
-  /// Emits 'read' event through hook pipeline.
+  /// Flow (meta-first pattern):
+  /// 1. Emit 'readMeta' - allows TTL/invalidation check
+  /// 2. If HiDelete/HiBreak from meta, early exit
+  /// 3. Emit 'read' - allows value transformation
+  /// 4. Return final value
+  ///
   /// Returns `null` if key doesn't exist or hooks return [HiDelete].
   Future<T?> get<T>(String key) async {
-    final payload = HiPayload<T?>(key: key, value: null, env: env);
+    // Meta-first: Check metadata before reading value
+    if (config.withMeta) {
+      final storedMeta = await _store.getMeta(key);
+      final metaPayload = HiPayload<dynamic>(
+        key: key,
+        value: storedMeta,
+        env: env,
+        metadata: {'store': _store},
+      );
+
+      final metaResult = await metaEngine.emit<dynamic, dynamic>(
+        'readMeta',
+        metaPayload,
+      );
+
+      // HiDelete on meta = delete both value and meta, return null
+      if (metaResult is HiDelete) {
+        await _store.delete(key);
+        await _store.deleteMeta(key);
+        return null;
+      }
+
+      // HiBreak on meta = return break value, skip reading value
+      if (metaResult is HiBreak) {
+        return metaResult.returnValue as T?;
+      }
+    }
+
+    // Read value from store
+    final storedValue = await _store.get(key);
+
+    final payload = HiPayload<dynamic>(
+      key: key,
+      value: storedValue,
+      env: env,
+      metadata: {'store': _store},
+    );
 
     final result = await engine.emit<dynamic, dynamic>('read', payload);
 
@@ -159,27 +220,196 @@ class HHive {
       return result.returnValue as T?;
     }
 
-    // Perform actual read
-    final value = await _store.get(key);
-    return value as T?;
+    // Get potentially transformed value from result
+    final finalValue = result is HiContinue && result.payload != null
+        ? result.payload!.value
+        : storedValue;
+
+    return finalValue as T?;
   }
 
   /// Gets a value with its metadata.
+  ///
+  /// Flow (meta-first pattern):
+  /// 1. Emit 'readMeta' - allows TTL/invalidation check and meta decryption
+  /// 2. If HiDelete/HiBreak from meta, early exit
+  /// 3. Emit 'read' - allows value decryption/transformation
+  /// 4. Return both value and transformed meta
   ///
   /// Convenience method that bundles value + meta.
   Future<({T? value, Map<String, dynamic>? meta})> getWithMeta<T>(
     String key,
   ) async {
-    final value = await get<T>(key);
-    final meta = await _store.getMeta(key);
-    return (value: value, meta: meta);
+    Map<String, dynamic>? finalMeta;
+
+    // Meta-first: emit readMeta
+    if (config.withMeta) {
+      final storedMeta = await _store.getMeta(key);
+      final metaPayload = HiPayload<dynamic>(
+        key: key,
+        value: storedMeta,
+        env: env,
+        metadata: {'store': _store},
+      );
+
+      final metaResult = await metaEngine.emit<dynamic, dynamic>(
+        'readMeta',
+        metaPayload,
+      );
+
+      // HiDelete on meta = delete both, return null
+      if (metaResult is HiDelete) {
+        await _store.delete(key);
+        await _store.deleteMeta(key);
+        return (value: null, meta: null);
+      }
+
+      // HiBreak on meta = return break value
+      if (metaResult is HiBreak) {
+        return (value: metaResult.returnValue as T?, meta: null);
+      }
+
+      // Get potentially transformed meta
+      finalMeta = metaResult is HiContinue && metaResult.payload != null
+          ? metaResult.payload!.value as Map<String, dynamic>?
+          : storedMeta;
+    }
+
+    // Read value from store
+    final storedValue = await _store.get(key);
+
+    final payload = HiPayload<dynamic>(
+      key: key,
+      value: storedValue,
+      env: env,
+      metadata: {'store': _store},
+    );
+
+    final result = await engine.emit<dynamic, dynamic>('read', payload);
+
+    // Check for HiDelete or HiBreak
+    if (result is HiDelete) {
+      await _store.delete(key);
+      await _store.deleteMeta(key);
+      return (value: null, meta: null);
+    }
+
+    if (result is HiBreak) {
+      return (value: result.returnValue as T?, meta: finalMeta);
+    }
+
+    // Get potentially transformed value from result
+    final finalValue = result is HiContinue && result.payload != null
+        ? result.payload!.value
+        : storedValue;
+
+    return (value: finalValue as T?, meta: finalMeta);
+  }
+
+  // --- Standalone Meta Operations ---
+
+  /// Gets metadata for a key without reading the value.
+  ///
+  /// Emits 'readMeta' event through meta hook pipeline.
+  /// Useful for checking TTL/invalidation without decrypting value.
+  Future<Map<String, dynamic>?> getMeta(String key) async {
+    if (!config.withMeta) return null;
+
+    final storedMeta = await _store.getMeta(key);
+    final metaPayload = HiPayload<dynamic>(
+      key: key,
+      value: storedMeta,
+      env: env,
+      metadata: {'store': _store},
+    );
+
+    final metaResult = await metaEngine.emit<dynamic, dynamic>(
+      'readMeta',
+      metaPayload,
+    );
+
+    if (metaResult is HiDelete) {
+      await _store.delete(key);
+      await _store.deleteMeta(key);
+      return null;
+    }
+
+    if (metaResult is HiBreak) {
+      return metaResult.returnValue as Map<String, dynamic>?;
+    }
+
+    // Get potentially transformed meta
+    return metaResult is HiContinue && metaResult.payload != null
+        ? metaResult.payload!.value as Map<String, dynamic>?
+        : storedMeta;
+  }
+
+  /// Stores metadata for a key without modifying the value.
+  ///
+  /// Emits 'writeMeta' event through meta hook pipeline.
+  /// Useful for updating TTL or other metadata independently.
+  Future<void> putMeta(String key, Map<String, dynamic> meta) async {
+    if (!config.withMeta) return;
+
+    final metaPayload = HiPayload<dynamic>(
+      key: key,
+      value: meta,
+      env: env,
+      metadata: {'store': _store},
+    );
+
+    final metaResult = await metaEngine.emit<dynamic, dynamic>(
+      'writeMeta',
+      metaPayload,
+    );
+
+    if (metaResult is HiBreak || metaResult is HiDelete) {
+      return;
+    }
+
+    // Get potentially transformed meta
+    final finalMeta = metaResult is HiContinue && metaResult.payload != null
+        ? metaResult.payload!.value as Map<String, dynamic>?
+        : meta;
+
+    if (finalMeta != null) {
+      await _store.putMeta(key, finalMeta);
+    }
+  }
+
+  /// Deletes metadata for a key without deleting the value.
+  ///
+  /// Emits 'deleteMeta' event through meta hook pipeline.
+  Future<void> deleteMeta(String key) async {
+    if (!config.withMeta) return;
+
+    final metaPayload = HiPayload<void>(
+      key: key,
+      value: null,
+      env: env,
+      metadata: {'store': _store},
+    );
+
+    final metaResult = await metaEngine.emit<dynamic, dynamic>(
+      'deleteMeta',
+      metaPayload,
+    );
+
+    if (metaResult is! HiBreak) {
+      await _store.deleteMeta(key);
+    }
   }
 
   // --- Write Operations ---
 
   /// Stores a value by key.
   ///
-  /// Emits 'write' event through hook pipeline.
+  /// Flow:
+  /// 1. Emit 'write' - allows value validation/encryption
+  /// 2. Store the value
+  /// 3. Emit 'writeMeta' - allows meta encryption
+  /// 4. Store the meta
+  ///
   /// Optionally stores metadata alongside the value.
   Future<void> put<T>(
     String key,
@@ -223,15 +453,37 @@ class HHive {
     // Perform actual write
     await _store.put(key, finalValue);
 
-    // Handle metadata
+    // Handle metadata via metaEngine
     if (config.withMeta) {
-      // Check if meta was modified in context
-      final resultMeta = result is HiContinue && result.payload?.metadata != null
+      // Determine the meta to write (from hook or parameter)
+      final metaToWrite = result is HiContinue && result.payload?.metadata != null
           ? result.payload!.metadata!['meta'] as Map<String, dynamic>?
           : meta;
 
-      if (resultMeta != null) {
-        await _store.putMeta(key, resultMeta);
+      if (metaToWrite != null) {
+        // Emit writeMeta event for meta transformation (e.g., encryption)
+        final metaPayload = HiPayload<dynamic>(
+          key: key,
+          value: metaToWrite,
+          env: env,
+          metadata: {'store': _store},
+        );
+
+        final metaResult = await metaEngine.emit<dynamic, dynamic>(
+          'writeMeta',
+          metaPayload,
+        );
+
+        // Get potentially transformed meta
+        if (metaResult is! HiBreak && metaResult is! HiDelete) {
+          final finalMeta = metaResult is HiContinue && metaResult.payload != null
+              ? metaResult.payload!.value as Map<String, dynamic>?
+              : metaToWrite;
+
+          if (finalMeta != null) {
+            await _store.putMeta(key, finalMeta);
+          }
+        }
       }
     }
   }
@@ -240,7 +492,11 @@ class HHive {
 
   /// Deletes a value by key.
   ///
-  /// Emits 'delete' event through hook pipeline.
+  /// Flow:
+  /// 1. Emit 'delete' event
+  /// 2. Delete the value
+  /// 3. Emit 'deleteMeta' event
+  /// 4. Delete the meta
   Future<void> delete(String key) async {
     final payload = HiPayload<void>(key: key, value: null, env: env);
 
@@ -251,14 +507,34 @@ class HHive {
     }
 
     await _store.delete(key);
+
     if (config.withMeta) {
-      await _store.deleteMeta(key);
+      // Emit deleteMeta event
+      final metaPayload = HiPayload<void>(
+        key: key,
+        value: null,
+        env: env,
+        metadata: {'store': _store},
+      );
+
+      final metaResult = await metaEngine.emit<dynamic, dynamic>(
+        'deleteMeta',
+        metaPayload,
+      );
+
+      if (metaResult is! HiBreak) {
+        await _store.deleteMeta(key);
+      }
     }
   }
 
   /// Clears all values.
   ///
-  /// Emits 'clear' event through hook pipeline.
+  /// Flow:
+  /// 1. Emit 'clear' event
+  /// 2. Clear all values
+  /// 3. Emit 'clearMeta' event
+  /// 4. Clear all meta
   Future<void> clear() async {
     final payload = HiPayload<void>(key: null, value: null, env: env);
 
@@ -269,8 +545,24 @@ class HHive {
     }
 
     await _store.clear();
+
     if (config.withMeta) {
-      await _store.clearMeta();
+      // Emit clearMeta event
+      final metaPayload = HiPayload<void>(
+        key: null,
+        value: null,
+        env: env,
+        metadata: {'store': _store},
+      );
+
+      final metaResult = await metaEngine.emit<dynamic, dynamic>(
+        'clearMeta',
+        metaPayload,
+      );
+
+      if (metaResult is! HiBreak) {
+        await _store.clearMeta();
+      }
     }
   }
 

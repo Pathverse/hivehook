@@ -25,7 +25,7 @@ dependencies:
 
 ```bash
 dart pub get
-dart test          # 112 tests
+dart test          # 125 tests
 dart analyze lib   # No issues
 ```
 

@@ -11,8 +11,11 @@
                         ▼
 ┌─────────────────────────────────────────────────┐
 │  HHive (Facade)                                  │
-│   ├── Owns HiEngine (per instance)              │
-│   └── Emits: 'read', 'write', 'delete', 'clear' │
+│   ├── Owns HiEngine (value hooks)               │
+│   ├── Owns metaEngine (meta hooks)              │
+│   ├── Value events: read, write, delete, clear  │
+│   └── Meta events: readMeta, writeMeta,         │
+│                    deleteMeta, clearMeta        │
 └─────────────────────────────────────────────────┘
                         │
                         ▼
@@ -93,5 +96,25 @@ lib/
 ## Event Flow
 
 ```
-hive.put() → engine.emit('write') → hooks → HiResult → storage
+# Value operations
+hive.put() → engine.emit('write') → hooks → storage
+         → metaEngine.emit('writeMeta') → metaHooks → storage
+
+# Meta-first pattern (read)
+hive.get() → metaEngine.emit('readMeta') → check TTL/invalidation
+          → engine.emit('read') → hooks → return value
+```
+
+## Meta Hooks Pattern
+
+For meta hooks, metadata is passed as `payload.value`:
+```dart
+HiHook(
+  events: ['writeMeta'],
+  handler: (payload, ctx) {
+    final meta = payload.value as Map<String, dynamic>?;
+    // Transform meta...
+    return HiContinue(payload: payload.copyWith(value: transformed));
+  },
+)
 ```

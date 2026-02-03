@@ -9,6 +9,7 @@ import 'scenarios/hook_pipeline.dart';
 import 'scenarios/ttl_expiration.dart';
 import 'scenarios/batch_operations.dart';
 import 'scenarios/multi_collection.dart';
+import 'scenarios/meta_hooks.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -58,6 +59,7 @@ class _DemoHomePageState extends State<DemoHomePage> {
     SocialMediaFeedScenario(),
     ConfigManagementScenario(),
     HookPipelineScenario(),
+    MetaHooksScenario(),
     TtlExpirationScenario(),
     BatchOperationsScenario(),
     MultiCollectionScenario(),
