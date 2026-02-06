@@ -1,3 +1,6 @@
+## Recent Findings
+
+- As of the most recent hive_ce version (2.19.3 and up to current), BoxCollection on web still does **not** support built-in encryption (HiveCipher is ignored). Regular boxes on web **do** support encryption. Application-level encryption via meta hooks remains a viable cross-platform fallback.
 # Progress
 
 ## Current Status
