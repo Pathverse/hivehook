@@ -100,6 +100,16 @@ class HBoxStore implements HiStore<String, dynamic> {
     }
   }
 
+  /// Clears all entries in the box (ignores env scoping).
+  ///
+  /// Use with caution - this removes data for ALL envs sharing this box.
+  Future<void> clearAll() async {
+    await box.clearAll();
+    if (metaBox != null) {
+      await metaBox!.clearAll();
+    }
+  }
+
   @override
   Stream<String> keys() async* {
     final allKeys = await box.getAllKeys();

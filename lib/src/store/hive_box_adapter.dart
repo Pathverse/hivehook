@@ -19,6 +19,9 @@ abstract class HiveBoxAdapter<E> {
 
   /// Gets all key-value pairs in the box.
   Future<Map<String, E>> getAllValues();
+
+  /// Clears all entries in the box (ignores env scoping).
+  Future<void> clearAll();
 }
 
 /// Adapter for [CollectionBox] (used with BoxCollection).
@@ -41,6 +44,9 @@ class CollectionBoxAdapter<E> implements HiveBoxAdapter<E> {
 
   @override
   Future<Map<String, E>> getAllValues() => _box.getAllValues();
+
+  @override
+  Future<void> clearAll() => _box.clear();
 }
 
 /// Adapter for regular [Box] (used with Hive.openBox).
@@ -73,4 +79,7 @@ class RegularBoxAdapter<E> implements HiveBoxAdapter<E> {
     }
     return result;
   }
+
+  @override
+  Future<void> clearAll() => _box.clear();
 }
