@@ -414,7 +414,7 @@ class HHiveCore {
         }
 
         final store = HBoxStore(
-          box: CollectionBoxAdapter<dynamic>(openedBox as CollectionBox<dynamic>),
+          box: CollectionBoxAdapter<dynamic>(openedBox),
           metaBox: metaBoxAdapter,
           env: config.env,
           storageMode: config.storageMode,
