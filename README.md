@@ -368,18 +368,66 @@ final hive = await HHive.createFromConfig(HiveConfig(
 |--------|------|---------|-------------|
 | `env` | `String` | required | Unique environment identifier |
 | `boxName` | `String?` | `env` | Physical box name (allows sharing) |
-| `boxCollectionName` | `String?` | `'hivehook'` | BoxCollection name |
-| `withMeta` | `bool` | `false` | Enable metadata storage |
+| `boxCollectionName` | `String` | `'hivehooks'` | BoxCollection name |
+| `type` | `HiveBoxType` | `boxCollection` | Storage type (see below) |
+| `withMeta` | `bool` | `true` | Enable metadata storage |
 | `hooks` | `List<HiHook>` | `[]` | Value operation hooks |
 | `metaHooks` | `List<HiHook>` | `[]` | Metadata operation hooks |
+
+### Storage Types
+
+| Type | Description |
+|------|-------------|
+| `HiveBoxType.boxCollection` | Uses BoxCollection (default). All boxes must be registered before `initialize()`. |
+| `HiveBoxType.box` | Uses individual Box. Opens lazily, ideal for dynamic scenarios. |
+
+```dart
+// BoxCollection (default) - register all before init
+HHiveCore.register(HiveConfig(env: 'users'));
+HHiveCore.register(HiveConfig(env: 'orders'));
+await HHiveCore.initialize();
+
+// Individual Box - can register anytime, opens lazily
+final hive = await HHive.createFromConfig(HiveConfig(
+  env: 'temp_${DateTime.now().millisecondsSinceEpoch}',
+  type: HiveBoxType.box,
+));
+```
+
+### BoxCollectionConfig
+
+Optionally pre-configure collections with custom settings:
+
+```dart
+// Pre-configure collection (before any HiveConfig registration)
+HHiveCore.registerCollection(BoxCollectionConfig(
+  name: 'myapp',
+  storagePath: '/custom/path',      // Overrides global path
+  encryptionCipher: myCipher,       // Overrides global cipher
+  includeMeta: true,                // Force meta box inclusion
+));
+
+// HiveConfigs reference the collection
+HHiveCore.register(HiveConfig(env: 'users', boxCollectionName: 'myapp'));
+HHiveCore.register(HiveConfig(env: 'orders', boxCollectionName: 'myapp'));
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `name` | `String` | required | Collection identifier |
+| `storagePath` | `String?` | global | Storage path override |
+| `encryptionCipher` | `HiveCipher?` | global | Encryption cipher override |
+| `includeMeta` | `bool?` | auto-detect | `null`=auto, `true`=force, `false`=forbid |
 
 ### Initialization Options
 
 ```dart
-// Custom storage path
+// Custom storage path (passed to initialize)
 await HHiveCore.initialize(path: '/custom/path');
 
-// Or use environment variable storagePath
+// Or set globally before initialize
+HHiveCore.storagePath = '/custom/path';
+await HHiveCore.initialize();
 ```
 
 ### Creating Instances
