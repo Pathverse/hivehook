@@ -1,6 +1,7 @@
 # Encryption Support (hive_ce)
 
 Up to the most recent hive_ce version (2.19.3 and current), BoxCollection on web still does **not** support built-in encryption (HiveCipher is ignored). Regular boxes on web **do** support encryption. Application-level encryption via meta hooks is the only cross-platform solution for BoxCollection.
+
 # Active Context
 
 ## Current Status (Feb 2, 2026)
@@ -8,6 +9,13 @@ Up to the most recent hive_ce version (2.19.3 and current), BoxCollection on web
 ### ✅ 125 Tests Passing
 
 Core implementation complete with env isolation, lazy BoxCollection opening, **meta hooks**, **path parameter**, and **test isolation**.
+
+## Recent: README Conventions Documented (2026-02-02)
+
+Rewrote README.md following pub.dev package conventions (slang reference). Documented rules in systemPatterns.md:
+- Self-contained documentation (inline code, not demo app showcases)
+- Structure: About → Getting Started → API → Features → Configuration
+- No license text in README body (separate LICENSE file)
 
 ## Recent: Test File Isolation (2026-02-02)
 

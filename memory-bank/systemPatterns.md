@@ -118,3 +118,30 @@ HiHook(
   },
 )
 ```
+
+## README Documentation Rules
+
+Package READMEs should be **self-contained documentation**, not demo app showcases.
+
+**Structure (following pub.dev conventions like slang):**
+
+1. **About this library** - Feature bullets + quick usage snippet
+2. **Table of Contents** - Navigation links
+3. **Getting Started** - Step-by-step: dependencies → init → usage
+4. **Core API** - Complete reference with code examples
+5. **Feature sections** - Each major feature with inline examples
+6. **Configuration** - Options tables with types/defaults
+7. **Learn More** - Links to dependencies/related packages
+
+**Rules:**
+- Code examples are inline, not references to example app
+- Each section teaches usage directly
+- Use tables for configuration options
+- No "Example App" section as primary content
+- No license text in README (LICENSE file exists)
+- Example app exists for interactive demos, not as documentation
+
+**Don't:**
+- Point to example files as primary documentation
+- Make README a tour of the demo app
+- Include MIT license text (separate LICENSE file)
