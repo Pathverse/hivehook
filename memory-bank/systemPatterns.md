@@ -89,8 +89,8 @@ HHiveCore.register(HiveConfig(
 **Resolution order (per-collection > global):**
 | Setting | Resolution |
 |---------|------------|
-| `path` | BoxCollectionConfig.path ?? HIVE_INIT_PATH |
-| `cipher` | BoxCollectionConfig.cipher ?? HIVE_CIPHER |
+| `path` | BoxCollectionConfig.path ?? storagePath |
+| `cipher` | BoxCollectionConfig.cipher ?? encryptionCipher |
 
 ## Folder Structure
 
@@ -104,7 +104,34 @@ lib/
     │   ├── hive_config.dart  # HiveConfig with boxName
     │   └── hive_core.dart    # Static manager
     └── store/
-        └── hbox_store.dart   # {env}:: key prefixing
+        ├── hbox_store.dart   # {env}:: key prefixing
+        └── hive_box_adapter.dart  # Box abstraction
+```
+
+## HiveBoxAdapter Pattern
+
+Abstracts box operations for both CollectionBox and regular Box:
+
+```dart
+abstract class HiveBoxAdapter<E> {
+  Future<E?> get(String key);
+  Future<void> put(String key, E value);
+  Future<void> delete(String key);
+  Future<List<String>> getAllKeys();
+  Future<Map<String, E>> getAllValues();
+}
+
+// Implementations:
+// - CollectionBoxAdapter: wraps CollectionBox
+// - RegularBoxAdapter: wraps Box (Hive.openBox)
+```
+
+**Usage in HBoxStore:**
+```dart
+class HBoxStore {
+  final HiveBoxAdapter<dynamic> box;      // Works with either
+  final HiveBoxAdapter<String>? metaBox;
+}
 ```
 
 ## Naming Conventions

@@ -8,8 +8,8 @@ void main() {
         final config = BoxCollectionConfig(name: 'myapp');
 
         expect(config.name, 'myapp');
-        expect(config.path, isNull);
-        expect(config.cipher, isNull);
+        expect(config.storagePath, isNull);
+        expect(config.encryptionCipher, isNull);
         expect(config.boxNames, isEmpty);
         expect(config.includeMeta, isNull);
         expect(config.isExplicit, isTrue);
@@ -18,13 +18,13 @@ void main() {
       test('creates with all optional parameters', () {
         final config = BoxCollectionConfig(
           name: 'myapp',
-          path: '/custom/path',
+          storagePath: '/custom/path',
           boxNames: {'users', 'settings'},
           includeMeta: true,
         );
 
         expect(config.name, 'myapp');
-        expect(config.path, '/custom/path');
+        expect(config.storagePath, '/custom/path');
         expect(config.boxNames, {'users', 'settings'});
         expect(config.includeMeta, isTrue);
       });
@@ -35,8 +35,8 @@ void main() {
         final config = BoxCollectionConfig.defaults('myapp');
 
         expect(config.name, 'myapp');
-        expect(config.path, isNull);
-        expect(config.cipher, isNull);
+        expect(config.storagePath, isNull);
+        expect(config.encryptionCipher, isNull);
         expect(config.boxNames, isEmpty);
         expect(config.includeMeta, isNull);
         expect(config.isExplicit, isFalse);
@@ -47,18 +47,18 @@ void main() {
       test('creates copy with updated values', () {
         final original = BoxCollectionConfig(
           name: 'myapp',
-          path: '/original',
+          storagePath: '/original',
           boxNames: {'box1'},
           includeMeta: false,
         );
 
         final updated = original.copyWith(
-          path: '/updated',
+          storagePath: '/updated',
           boxNames: {'box1', 'box2'},
         );
 
         expect(updated.name, 'myapp');
-        expect(updated.path, '/updated');
+        expect(updated.storagePath, '/updated');
         expect(updated.boxNames, {'box1', 'box2'});
         expect(updated.includeMeta, isFalse);
       });
@@ -66,14 +66,14 @@ void main() {
       test('preserves unchanged values', () {
         final original = BoxCollectionConfig(
           name: 'myapp',
-          path: '/path',
+          storagePath: '/path',
           includeMeta: true,
         );
 
         final updated = original.copyWith(name: 'newname');
 
         expect(updated.name, 'newname');
-        expect(updated.path, '/path');
+        expect(updated.storagePath, '/path');
         expect(updated.includeMeta, isTrue);
       });
     });

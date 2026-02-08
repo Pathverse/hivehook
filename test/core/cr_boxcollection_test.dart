@@ -23,7 +23,7 @@ void main() {
       await resetHiveState();
     });
 
-    test('cannot register new env to already-opened collection', () async {
+    test('cannot register new box to already-opened collection', () async {
       final collectionName = generateCollectionName();
 
       HHiveCore.register(HiveConfig(
@@ -33,10 +33,11 @@ void main() {
 
       await initWithTempPath();
 
-      // Collection is now opened, cannot add to it
+      // Collection is now opened, cannot add NEW box to it
       expect(
         () => HHiveCore.register(HiveConfig(
           env: 'orders',
+          boxName: 'orders_box', // NEW box name
           boxCollectionName: collectionName,
         )),
         throwsA(isA<StateError>().having(
@@ -45,6 +46,38 @@ void main() {
           contains('already opened'),
         )),
       );
+    });
+
+    test('can reuse existing box in opened collection with new env', () async {
+      final collectionName = generateCollectionName();
+
+      HHiveCore.register(HiveConfig(
+        env: 'users_v1',
+        boxName: 'users',
+        boxCollectionName: collectionName,
+      ));
+
+      await initWithTempPath();
+
+      // Collection is opened, but we can reuse the existing 'users' box
+      expect(
+        () => HHiveCore.register(HiveConfig(
+          env: 'users_v2',
+          boxName: 'users', // EXISTING box name
+          boxCollectionName: collectionName,
+        )),
+        returnsNormally,
+      );
+
+      // Both envs should work and be isolated
+      final v1 = await HHive.create('users_v1');
+      final v2 = await HHive.create('users_v2');
+
+      await v1.put('key1', 'from_v1');
+      await v2.put('key1', 'from_v2');
+
+      expect(await v1.get('key1'), 'from_v1');
+      expect(await v2.get('key1'), 'from_v2');
     });
 
     test('can register to different collection after init', () async {
@@ -297,7 +330,7 @@ void main() {
       );
     });
 
-    test('Box type throws UnimplementedError on getStore (not yet supported)', () async {
+    test('Box type creates store lazily on getStore', () async {
       HHiveCore.register(HiveConfig(
         env: 'lazy',
         type: HiveBoxType.box,
@@ -305,10 +338,31 @@ void main() {
 
       await initWithTempPath();
 
-      expect(
-        () async => await HHiveCore.getStore('lazy'),
-        throwsA(isA<UnimplementedError>()),
-      );
+      // Should create store successfully
+      final store = await HHiveCore.getStore('lazy');
+      expect(store, isNotNull);
+
+      // Verify store is cached
+      final store2 = await HHiveCore.getStore('lazy');
+      expect(identical(store, store2), isTrue);
+    });
+
+    test('Box type with meta creates separate meta box', () async {
+      HHiveCore.register(HiveConfig(
+        env: 'boxmeta',
+        type: HiveBoxType.box,
+        withMeta: true,
+      ));
+
+      await initWithTempPath();
+
+      final store = await HHiveCore.getStore('boxmeta');
+      expect(store.supportsMeta, isTrue);
+
+      // Test meta operations work
+      await store.putMeta('key1', {'ttl': 3600});
+      final meta = await store.getMeta('key1');
+      expect(meta, {'ttl': 3600});
     });
   });
 

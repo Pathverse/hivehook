@@ -60,18 +60,42 @@ class MultiCollectionScenario extends Scenario {
     log('   await HHiveCore.initialize();');
     log('');
 
-    // Part 2: Show post-init registration error
-    log('2️⃣ Post-Init Registration (throws error):');
+    // Part 2: Show post-init registration constraints
+    log('2️⃣ Post-Init Registration Constraints:');
     log('');
+    log('   BoxCollection type (default):');
+    log('   • New boxes cannot be added to an opened collection');
+    log('   • But NEW envs can reuse EXISTING boxes in opened collection');
+    log('');
+    log('   HiveBoxType.box:');
+    log('   • No registration constraint - boxes open lazily');
+    log('   • Ideal for dynamic scenarios like createFromConfig()');
+    log('');
+    
+    // Demonstrate reusing existing box works
+    try {
+      // This should work - 'demo' box exists in 'hivehook_demo' collection
+      HHiveCore.register(HiveConfig(
+        env: 'demo_alias_${DateTime.now().millisecondsSinceEpoch}',
+        boxName: 'demo', // Same box as main demo
+        boxCollectionName: 'hivehook_demo',
+      ));
+      log('   ✓ Reusing existing box in opened collection: works!', level: LogLevel.success);
+    } catch (e) {
+      log('   ✗ Unexpected error: $e', level: LogLevel.error);
+    }
+    
+    // Demonstrate adding NEW box to opened collection fails
     try {
       HHiveCore.register(HiveConfig(
-        env: 'late_env',
-        boxCollectionName: 'new_collection',
+        env: 'new_box_env_${DateTime.now().millisecondsSinceEpoch}',
+        boxName: 'brand_new_box', // New box - should fail
+        boxCollectionName: 'hivehook_demo',
       ));
       log('   ✗ Should have thrown!', level: LogLevel.error);
     } on StateError catch (e) {
-      log('   ✓ Correctly throws StateError:', level: LogLevel.success);
-      log('   "${e.message}"');
+      log('   ✓ Adding new box to opened collection: correctly throws', level: LogLevel.success);
+      log('     "${e.message.substring(0, 60)}..."', level: LogLevel.data);
     }
     log('');
 
@@ -132,10 +156,17 @@ class MultiCollectionScenario extends Scenario {
 
     log('6️⃣ Summary:');
     log('');
-    log('   • Register all BoxCollection configs before initialize()');
+    log('   BoxCollection (default):');
+    log('   • Register configs before initialize() for new boxes');
+    log('   • New envs can reuse existing boxes after init');
     log('   • Group related envs in same boxCollectionName');
-    log('   • Use boxName to share physical boxes between envs');
-    log('   • Keys are auto-prefixed with env:: for isolation');
+    log('');
+    log('   HiveBoxType.box:');
+    log('   • Use for dynamic/on-demand box creation');
+    log('   • No upfront registration required');
+    log('');
+    log('   Both types:');
+    log('   • Keys auto-prefixed with env:: for isolation');
     log('   • Users see clean keys (prefix is transparent)');
   }
 }

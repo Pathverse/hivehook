@@ -30,6 +30,7 @@ class HookPipelineScenario extends Scenario {
       final envId = 'transform_${DateTime.now().millisecondsSinceEpoch}';
       final hive = await HHive.createFromConfig(HiveConfig(
         env: envId,
+        type: HiveBoxType.box,
         hooks: [
           HiHook(
             uid: 'tax_calculator',
@@ -70,6 +71,7 @@ class HookPipelineScenario extends Scenario {
       final envId = 'validation_${DateTime.now().millisecondsSinceEpoch}';
       final hive = await HHive.createFromConfig(HiveConfig(
         env: envId,
+        type: HiveBoxType.box,
         hooks: [
           HiHook(
             uid: 'email_validator',
@@ -119,6 +121,7 @@ class HookPipelineScenario extends Scenario {
 
       final hive = await HHive.createFromConfig(HiveConfig(
         env: envId,
+        type: HiveBoxType.box,
         hooks: [
           // Hook 1: Logging
           HiHook(

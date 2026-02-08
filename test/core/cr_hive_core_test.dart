@@ -270,12 +270,12 @@ void main() {
         final collectionName = generateCollectionName();
         HHiveCore.registerCollection(BoxCollectionConfig(
           name: collectionName,
-          path: '/custom/path',
+          storagePath: '/custom/path',
           includeMeta: true,
         ));
 
         expect(HHiveCore.collectionConfigs.containsKey(collectionName), isTrue);
-        expect(HHiveCore.collectionConfigs[collectionName]?.path, '/custom/path');
+        expect(HHiveCore.collectionConfigs[collectionName]?.storagePath, '/custom/path');
         expect(HHiveCore.collectionConfigs[collectionName]?.includeMeta, isTrue);
       });
 
@@ -325,7 +325,7 @@ void main() {
         final collectionName = generateCollectionName();
         HHiveCore.registerCollection(BoxCollectionConfig(
           name: collectionName,
-          path: '/custom/path',
+          storagePath: '/custom/path',
           boxNames: {'predeclared_box'},
         ));
 
@@ -337,7 +337,7 @@ void main() {
 
         final collectionConfig = HHiveCore.collectionConfigs[collectionName]!;
         expect(collectionConfig.isExplicit, isTrue);
-        expect(collectionConfig.path, '/custom/path');
+        expect(collectionConfig.storagePath, '/custom/path');
         expect(collectionConfig.boxNames, containsAll(['predeclared_box', 'users_box']));
       });
 

@@ -1,9 +1,9 @@
 import 'dart:convert';
 
-import 'package:hive_ce/hive.dart';
 import 'package:hihook/interfaces/hi_store.dart';
 
 import '../core/hive_config.dart';
+import 'hive_box_adapter.dart';
 
 /// Pure Hive storage implementation of [HiStore].
 ///
@@ -16,11 +16,11 @@ import '../core/hive_config.dart';
 ///
 /// Metadata (if enabled) is stored in a separate box with namespaced keys.
 class HBoxStore implements HiStore<String, dynamic> {
-  /// The main data box.
-  final CollectionBox<dynamic> box;
+  /// The main data box adapter.
+  final HiveBoxAdapter<dynamic> box;
 
-  /// The metadata box (null if metadata not enabled).
-  final CollectionBox<String>? metaBox;
+  /// The metadata box adapter (null if metadata not enabled).
+  final HiveBoxAdapter<String>? metaBox;
 
   /// Environment name (used for metadata key namespacing).
   final String env;

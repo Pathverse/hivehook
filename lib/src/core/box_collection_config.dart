@@ -10,8 +10,8 @@ import 'package:hive_ce/hive.dart';
 /// // Pre-configure collection
 /// HHiveCore.registerCollection(BoxCollectionConfig(
 ///   name: 'myapp',
-///   path: '/custom/path',
-///   cipher: myCipher,
+///   storagePath: '/custom/path',
+///   encryptionCipher: myCipher,
 ///   includeMeta: true,
 /// ));
 ///
@@ -23,12 +23,12 @@ class BoxCollectionConfig {
   final String name;
 
   /// Storage path override for this collection.
-  /// Falls back to global [HHiveCore.HIVE_INIT_PATH] if null.
-  final String? path;
+  /// Falls back to global [HHiveCore.storagePath] if null.
+  final String? storagePath;
 
   /// Encryption cipher for this collection.
-  /// Falls back to global [HHiveCore.HIVE_CIPHER] if null.
-  final HiveCipher? cipher;
+  /// Falls back to global [HHiveCore.encryptionCipher] if null.
+  final HiveCipher? encryptionCipher;
 
   /// Box names in this collection.
   ///
@@ -50,8 +50,8 @@ class BoxCollectionConfig {
 
   const BoxCollectionConfig({
     required this.name,
-    this.path,
-    this.cipher,
+    this.storagePath,
+    this.encryptionCipher,
     this.boxNames = const {},
     this.includeMeta,
     this.isExplicit = true,
@@ -70,16 +70,16 @@ class BoxCollectionConfig {
   /// Creates a copy with updated values.
   BoxCollectionConfig copyWith({
     String? name,
-    String? path,
-    HiveCipher? cipher,
+    String? storagePath,
+    HiveCipher? encryptionCipher,
     Set<String>? boxNames,
     bool? includeMeta,
     bool? isExplicit,
   }) {
     return BoxCollectionConfig(
       name: name ?? this.name,
-      path: path ?? this.path,
-      cipher: cipher ?? this.cipher,
+      storagePath: storagePath ?? this.storagePath,
+      encryptionCipher: encryptionCipher ?? this.encryptionCipher,
       boxNames: boxNames ?? this.boxNames,
       includeMeta: includeMeta ?? this.includeMeta,
       isExplicit: isExplicit ?? this.isExplicit,

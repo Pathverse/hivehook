@@ -4,6 +4,7 @@ import 'package:hihook/src/hook/hook.dart';
 import 'box_collection_config.dart';
 import 'hive_config.dart';
 import '../store/hbox_store.dart';
+import '../store/hive_box_adapter.dart';
 
 /// Centralized initialization and lifecycle management for Hive storage.
 ///
@@ -28,35 +29,15 @@ import '../store/hbox_store.dart';
 class HHiveCore {
   // --- Static Configuration ---
 
-  /// Detect debug mode using assertions (only run in debug mode).
-  static final bool kDebugMode = () {
-    bool isDebug = false;
-    assert(() {
-      isDebug = true;
-      return true;
-    }());
-    return isDebug;
-  }();
-
-  /// Whether debug object storage is available (web only).
-  /// TODO: Add web_debug implementation for browser dev tools integration
-  static bool get isDebugAvailable => false;
-
-  /// Override for debug object storage.
-  static bool? _debugObjOverride;
-  static bool get DEBUG_OBJ =>
-      (_debugObjOverride ?? kDebugMode) && isDebugAvailable;
-  static set DEBUG_OBJ(bool? value) => _debugObjOverride = value;
-
   /// Hive initialization path.
-  static String? HIVE_INIT_PATH;
+  static String? storagePath;
 
   /// Hive storage backend preference.
   static HiveStorageBackendPreference HIVE_STORAGE_BACKEND_PREFERENCE =
       HiveStorageBackendPreference.native;
 
   /// Hive cipher for encryption.
-  static HiveCipher? HIVE_CIPHER;
+  static HiveCipher? encryptionCipher;
 
   // --- Global Defaults ---
 
@@ -192,15 +173,24 @@ class HHiveCore {
 
     // For BoxCollection: update collection config
     if (config.type == HiveBoxType.boxCollection) {
-      if (_openedCollectionNames.contains(config.boxCollectionName)) {
-        throw StateError(
-          'BoxCollection "${config.boxCollectionName}" is already opened. '
-          'Cannot add new boxes to an opened collection.',
-        );
+      final collectionName = config.boxCollectionName;
+      
+      // Only block if collection is opened AND this is a NEW box name
+      if (_openedCollectionNames.contains(collectionName)) {
+        final existingConfig = _collectionConfigs[collectionName];
+        final isExistingBox = existingConfig?.boxNames.contains(config.boxName) ?? false;
+        if (!isExistingBox) {
+          throw StateError(
+            'BoxCollection "$collectionName" is already opened. '
+            'Cannot add new box "${config.boxName}" to an opened collection.',
+          );
+        }
+        // Box already exists - allow this env to reuse it
+        _configs[config.env] = config;
+        return;
       }
 
       // Get or create BoxCollectionConfig
-      final collectionName = config.boxCollectionName;
       var collectionConfig = _collectionConfigs[collectionName];
       if (collectionConfig == null) {
         // Auto-create with defaults
@@ -228,7 +218,7 @@ class HHiveCore {
   /// Initialize Hive and open all registered BoxCollections.
   ///
   /// [path] - Optional path for Hive storage (non-web platforms).
-  ///          If not provided, uses [HIVE_INIT_PATH] static field.
+  ///          If not provided, uses [storagePath] static field.
   ///
   /// For [HiveBoxType.boxCollection], all boxes are opened at once.
   /// For [HiveBoxType.box], boxes are opened lazily on first access.
@@ -237,7 +227,7 @@ class HHiveCore {
     _initialized = true;
 
     // Use provided path or fall back to static field
-    final initPath = path ?? HIVE_INIT_PATH;
+    final initPath = path ?? storagePath;
     _effectiveInitPath = initPath;
 
     // Initialize Hive
@@ -279,11 +269,6 @@ class HHiveCore {
 
       await _openBoxCollection(collectionName, configs);
     }
-
-    // Initialize web debug if enabled
-    if (DEBUG_OBJ) {
-      // TODO: Add web_debug.initWebDebug() when web debug support is added
-    }
   }
 
   /// Opens a BoxCollection and creates stores for all its configs.
@@ -313,8 +298,8 @@ class HHiveCore {
     if (includeMeta) boxNames.add('_meta');
 
     // Resolve path and cipher (collection config > global defaults)
-    final effectivePath = collectionConfig.path ?? _effectiveInitPath;
-    final effectiveCipher = collectionConfig.cipher ?? HIVE_CIPHER;
+    final effectivePath = collectionConfig.storagePath ?? _effectiveInitPath;
+    final effectiveCipher = collectionConfig.encryptionCipher ?? encryptionCipher;
 
     // Open collection
     final collection = await BoxCollection.open(
@@ -332,8 +317,10 @@ class HHiveCore {
     // Track opened boxes by boxName to share between envs
     final openedDataBoxes = <String, CollectionBox<dynamic>>{};
     CollectionBox<String>? metaBox;
+    HiveBoxAdapter<String>? metaBoxAdapter;
     if (includeMeta) {
       metaBox = await collection.openBox<String>('_meta');
+      metaBoxAdapter = CollectionBoxAdapter<String>(metaBox);
       _openedBoxes['$collectionName::_meta'] = metaBox;
     }
 
@@ -356,8 +343,8 @@ class HHiveCore {
       }
 
       _stores[config.env] = HBoxStore(
-        box: box,
-        metaBox: config.withMeta ? metaBox : null,
+        box: CollectionBoxAdapter<dynamic>(box),
+        metaBox: config.withMeta ? metaBoxAdapter : null,
         env: config.env,
         storageMode: config.storageMode,
         jsonEncoder: config.jsonEncoder ?? globalJsonEncoder,
@@ -412,6 +399,33 @@ class HHiveCore {
       return _stores[env]!;
     }
 
+    // Handle late-registered env that reuses an existing box in opened collection
+    if (_openedCollectionNames.contains(collectionName)) {
+      final boxKey = '$collectionName::${config.boxName}';
+      final openedBox = _openedBoxes[boxKey];
+      if (openedBox != null) {
+        // Get meta box if needed
+        HiveBoxAdapter<String>? metaBoxAdapter;
+        if (config.withMeta) {
+          final metaBox = _openedBoxes['$collectionName::_meta'];
+          if (metaBox != null) {
+            metaBoxAdapter = CollectionBoxAdapter<String>(metaBox as CollectionBox<String>);
+          }
+        }
+
+        final store = HBoxStore(
+          box: CollectionBoxAdapter<dynamic>(openedBox as CollectionBox<dynamic>),
+          metaBox: metaBoxAdapter,
+          env: config.env,
+          storageMode: config.storageMode,
+          jsonEncoder: config.jsonEncoder ?? globalJsonEncoder,
+          jsonDecoder: config.jsonDecoder ?? globalJsonDecoder,
+        );
+        _stores[env] = store;
+        return store;
+      }
+    }
+
     // Should not happen, but defensive
     throw StateError(
       'Store for env "$env" not found after opening collection.',
@@ -420,18 +434,46 @@ class HHiveCore {
 
   /// Creates an HBoxStore for a Box type config (lazy initialization).
   ///
-  /// TODO: Implement Box type support
-  /// When implementing, consider:
-  /// - BoxCollection creates folders: {path}/{collectionName}/
+  /// Opens individual boxes using Hive.openBox() instead of BoxCollection.
   /// - Regular Box creates files: {path}/{boxName}.hive
-  /// - They can coexist at the same path if names don't collide
-  /// - May want to add validation to prevent name collisions
-  /// - Will need to use Hive.openBox() instead of BoxCollection.open()
+  /// - Meta box (if enabled): {path}/{boxName}_meta.hive
   static Future<HBoxStore> _createBoxStore(HiveConfig config) async {
-    throw UnimplementedError(
-      'Individual Box support not yet implemented. '
-      'Use HiveBoxType.boxCollection for now.',
+    // Open the data box
+    Box<dynamic> dataBox;
+    if (config.storageMode == HiveStorageMode.native) {
+      dataBox = await Hive.openBox<dynamic>(
+        config.boxName,
+        encryptionCipher: encryptionCipher,
+      );
+    } else {
+      dataBox = await Hive.openBox<String>(
+        config.boxName,
+        encryptionCipher: encryptionCipher,
+      );
+    }
+
+    // Open meta box if needed
+    HiveBoxAdapter<String>? metaBoxAdapter;
+    if (config.withMeta) {
+      final metaBoxName = '${config.boxName}_meta';
+      final metaBox = await Hive.openBox<String>(
+        metaBoxName,
+        encryptionCipher: encryptionCipher,
+      );
+      metaBoxAdapter = RegularBoxAdapter<String>(metaBox);
+    }
+
+    final store = HBoxStore(
+      box: RegularBoxAdapter<dynamic>(dataBox),
+      metaBox: metaBoxAdapter,
+      env: config.env,
+      storageMode: config.storageMode,
+      jsonEncoder: config.jsonEncoder ?? globalJsonEncoder,
+      jsonDecoder: config.jsonDecoder ?? globalJsonDecoder,
     );
+
+    _stores[config.env] = store;
+    return store;
   }
 
   /// Disposes resources for an environment.

@@ -7,6 +7,8 @@
 - Meta hooks for metadata transformation and encryption
 - Meta-first pattern for efficient TTL checks before value reads
 - BoxCollectionConfig for per-collection path, cipher, and meta settings
+- Individual Box support via HiveBoxType.box
+- HiveBoxAdapter abstraction for unified box operations
 
 ## 0.2.0
 

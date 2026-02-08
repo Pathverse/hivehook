@@ -6,11 +6,18 @@
 
 ## Current Status
 
-**Phase**: BoxCollectionConfig Complete  
+**Phase**: Individual Box Support Complete  
 **Date**: Feb 8, 2026  
-**Tests**: 145 passing
+**Tests**: 146 passing
 
 ## Implementation Status
+
+### ✅ Part 8: Individual Box Support (COMPLETE)
+- HiveBoxAdapter abstraction for CollectionBox and regular Box
+- CollectionBoxAdapter + RegularBoxAdapter implementations
+- _createBoxStore() implemented for HiveBoxType.box
+- Removed debug mode settings (kDebugMode, DEBUG_OBJ)
+- 2 new tests for Box type
 
 ### ✅ Part 7: BoxCollectionConfig (COMPLETE)
 - Per-collection path, cipher, and meta configuration
@@ -40,10 +47,10 @@
 | HHiveCore lifecycle | 21 |
 | Plugin integration | 15 |
 | Env isolation | 14 |
-| BoxCollection constraints | 12 |
+| BoxCollection constraints | 13 |
 | Meta hooks | 13 |
 | BoxCollectionConfig | 14 |
-| **Total** | **145** |
+| **Total** | **146** |
 
 ### ✅ Part 4: Env Isolation (COMPLETE)
 | Feature | Status |
@@ -80,7 +87,7 @@
 |---------|--------|
 | Optional `path` param on `initialize()` | ✅ |
 | Backward compatible (no breaking changes) | ✅ |
-| Falls back to `HIVE_INIT_PATH` if not provided | ✅ |
+| Falls back to `storagePath` if not provided | ✅ |
 
 ## What's Left
 

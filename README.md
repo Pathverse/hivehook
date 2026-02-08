@@ -379,7 +379,7 @@ final hive = await HHive.createFromConfig(HiveConfig(
 // Custom storage path
 await HHiveCore.initialize(path: '/custom/path');
 
-// Or use environment variable HIVE_INIT_PATH
+// Or use environment variable storagePath
 ```
 
 ### Creating Instances

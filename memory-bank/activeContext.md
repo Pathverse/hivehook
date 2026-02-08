@@ -6,9 +6,29 @@ Up to the most recent hive_ce version (2.19.3 and current), BoxCollection on web
 
 ## Current Status (Feb 8, 2026)
 
-### ✅ 145 Tests Passing
+### ✅ 146 Tests Passing
 
-Core implementation complete with env isolation, lazy BoxCollection opening, **meta hooks**, **path parameter**, **test isolation**, and **BoxCollectionConfig**.
+Core implementation complete with env isolation, lazy BoxCollection opening, **meta hooks**, **path parameter**, **test isolation**, **BoxCollectionConfig**, and **individual Box support**.
+
+## Recent: Individual Box Support (2026-02-08)
+
+Implemented HiveBoxAdapter pattern for supporting both BoxCollection and regular Box:
+
+```dart
+// Now works with HiveBoxType.box
+HHiveCore.register(HiveConfig(
+  env: 'users',
+  type: HiveBoxType.box,  // Uses Hive.openBox() instead of BoxCollection
+  withMeta: true,         // Creates {boxName}_meta.hive
+));
+```
+
+**Changes:**
+- New `HiveBoxAdapter` abstract class with CollectionBoxAdapter + RegularBoxAdapter
+- HBoxStore now accepts adapters instead of raw CollectionBox
+- `_createBoxStore()` implemented for regular Box support
+- Removed debug mode settings (kDebugMode, DEBUG_OBJ, isDebugAvailable)
+- 2 new tests for Box type
 
 ## Recent: BoxCollectionConfig (2026-02-08)
 
@@ -72,7 +92,7 @@ Added optional `path` parameter to `HHiveCore.initialize()` for non-web platform
 await HHiveCore.initialize(path: '/my/storage/path');
 
 // Option 2: Set static field (existing behavior)
-HHiveCore.HIVE_INIT_PATH = '/my/storage/path';
+HHiveCore.storagePath = '/my/storage/path';
 await HHiveCore.initialize();
 
 // Option 3: No path for web

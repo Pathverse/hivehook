@@ -31,6 +31,7 @@ class MetaHooksScenario extends Scenario {
       final envId = 'meta_encrypt_${DateTime.now().millisecondsSinceEpoch}';
       final hive = await HHive.createFromConfig(HiveConfig(
         env: envId,
+        type: HiveBoxType.box,
         withMeta: true,
         metaHooks: [
           // Encrypt sensitive meta on write
@@ -98,6 +99,7 @@ class MetaHooksScenario extends Scenario {
       final envId = 'meta_audit_${DateTime.now().millisecondsSinceEpoch}';
       final hive = await HHive.createFromConfig(HiveConfig(
         env: envId,
+        type: HiveBoxType.box,
         withMeta: true,
         metaHooks: [
           HiHook(
@@ -136,6 +138,7 @@ class MetaHooksScenario extends Scenario {
 
       final hive = await HHive.createFromConfig(HiveConfig(
         env: envId,
+        type: HiveBoxType.box,
         withMeta: true,
         hooks: [
           HiHook(
@@ -212,6 +215,7 @@ class MetaHooksScenario extends Scenario {
       final envId = 'meta_ops_${DateTime.now().millisecondsSinceEpoch}';
       final hive = await HHive.createFromConfig(HiveConfig(
         env: envId,
+        type: HiveBoxType.box,
         withMeta: true,
       ));
 
