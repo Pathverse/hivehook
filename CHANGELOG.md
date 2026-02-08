@@ -6,9 +6,11 @@
 - Lazy BoxCollection opening on first access
 - Meta hooks for metadata transformation and encryption
 - Meta-first pattern for efficient TTL checks before value reads
-- BoxCollectionConfig for per-collection path, cipher, and meta settings
+- BoxCollectionConfig for per-collection storagePath, encryptionCipher, and meta settings
 - Individual Box support via HiveBoxType.box
 - HiveBoxAdapter abstraction for unified box operations
+- Registration constraint: new box names blocked when collection opened, existing boxes can be reused
+- 147 tests passing
 
 ## 0.2.0
 

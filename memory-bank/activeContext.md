@@ -6,7 +6,7 @@ Up to the most recent hive_ce version (2.19.3 and current), BoxCollection on web
 
 ## Current Status (Feb 8, 2026)
 
-### ✅ 146 Tests Passing
+### ✅ 147 Tests Passing
 
 Core implementation complete with env isolation, lazy BoxCollection opening, **meta hooks**, **path parameter**, **test isolation**, **BoxCollectionConfig**, and **individual Box support**.
 

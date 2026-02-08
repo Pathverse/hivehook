@@ -8,7 +8,7 @@
 
 **Phase**: Individual Box Support Complete  
 **Date**: Feb 8, 2026  
-**Tests**: 146 passing
+**Tests**: 147 passing
 
 ## Implementation Status
 
@@ -47,10 +47,10 @@
 | HHiveCore lifecycle | 21 |
 | Plugin integration | 15 |
 | Env isolation | 14 |
-| BoxCollection constraints | 13 |
+| BoxCollection constraints | 14 |
 | Meta hooks | 13 |
 | BoxCollectionConfig | 14 |
-| **Total** | **146** |
+| **Total** | **147** |
 
 ### ✅ Part 4: Env Isolation (COMPLETE)
 | Feature | Status |
