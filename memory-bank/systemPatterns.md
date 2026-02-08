@@ -21,6 +21,7 @@
                         ▼
 ┌─────────────────────────────────────────────────┐
 │  HHiveCore (Static Manager)                      │
+│   ├── registerCollection() - collection config  │
 │   ├── register() - unique env, checks opened    │
 │   ├── initialize() - opens registered boxes     │
 │   ├── getStore() - lazy opens if needed         │
@@ -58,6 +59,39 @@ HiveConfig(env: 'users_v2', boxName: 'users')
 //   users_v2::alice → {...}  // Different env, no collision
 ```
 
+## BoxCollectionConfig Pattern
+
+Per-collection configuration separate from HiveConfig:
+
+```dart
+// Pre-configure collection (optional)
+HHiveCore.registerCollection(BoxCollectionConfig(
+  name: 'myapp',
+  path: '/custom/path',    // Per-collection path
+  cipher: myCipher,        // Per-collection encryption
+  includeMeta: true,       // null=auto, true=force, false=forbid
+));
+
+// HiveConfig references collection (auto-creates if not pre-registered)
+HHiveCore.register(HiveConfig(
+  env: 'users',
+  boxCollectionName: 'myapp',
+));
+```
+
+**includeMeta behavior:**
+| Value | Behavior |
+|-------|----------|
+| `null` | Auto-detect from HiveConfig.withMeta |
+| `true` | Always include `_meta` box |
+| `false` | Never include (error if HiveConfig.withMeta conflicts) |
+
+**Resolution order (per-collection > global):**
+| Setting | Resolution |
+|---------|------------|
+| `path` | BoxCollectionConfig.path ?? HIVE_INIT_PATH |
+| `cipher` | BoxCollectionConfig.cipher ?? HIVE_CIPHER |
+
 ## Folder Structure
 
 ```
@@ -66,6 +100,7 @@ lib/
 └── src/
     ├── hhive.dart          # Facade, owns engine
     ├── core/
+    │   ├── box_collection_config.dart  # Per-collection settings
     │   ├── hive_config.dart  # HiveConfig with boxName
     │   └── hive_core.dart    # Static manager
     └── store/

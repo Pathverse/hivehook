@@ -6,11 +6,17 @@
 
 ## Current Status
 
-**Phase**: Documentation Complete  
-**Date**: Feb 2, 2026  
-**Tests**: 125 passing
+**Phase**: BoxCollectionConfig Complete  
+**Date**: Feb 8, 2026  
+**Tests**: 145 passing
 
 ## Implementation Status
+
+### ✅ Part 7: BoxCollectionConfig (COMPLETE)
+- Per-collection path, cipher, and meta configuration
+- Auto-creates from HiveConfig or pre-register with registerCollection()
+- includeMeta: null (auto), true (force), false (forbid)
+- 20 new tests (14 unit + 6 integration)
 
 ### ✅ Part 6: Documentation (COMPLETE)
 - README.md rewritten following pub.dev conventions (slang reference)
@@ -31,12 +37,13 @@
 | HHive facade | 17 |
 | Hook integration | 11 |
 | Custom JSON | 9 |
-| HHiveCore lifecycle | 15 |
+| HHiveCore lifecycle | 21 |
 | Plugin integration | 15 |
 | Env isolation | 14 |
 | BoxCollection constraints | 12 |
 | Meta hooks | 13 |
-| **Total** | **125** |
+| BoxCollectionConfig | 14 |
+| **Total** | **145** |
 
 ### ✅ Part 4: Env Isolation (COMPLETE)
 | Feature | Status |

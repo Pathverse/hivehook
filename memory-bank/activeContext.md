@@ -4,11 +4,35 @@ Up to the most recent hive_ce version (2.19.3 and current), BoxCollection on web
 
 # Active Context
 
-## Current Status (Feb 2, 2026)
+## Current Status (Feb 8, 2026)
 
-### ✅ 125 Tests Passing
+### ✅ 145 Tests Passing
 
-Core implementation complete with env isolation, lazy BoxCollection opening, **meta hooks**, **path parameter**, and **test isolation**.
+Core implementation complete with env isolation, lazy BoxCollection opening, **meta hooks**, **path parameter**, **test isolation**, and **BoxCollectionConfig**.
+
+## Recent: BoxCollectionConfig (2026-02-08)
+
+Added per-collection configuration separate from HiveConfig:
+
+```dart
+// Pre-configure collection (optional)
+HHiveCore.registerCollection(BoxCollectionConfig(
+  name: 'myapp',
+  path: '/custom/path',
+  cipher: myCipher,
+  includeMeta: true,  // null=auto, true=force, false=forbid
+));
+
+// HiveConfig references collection
+HHiveCore.register(HiveConfig(env: 'users', boxCollectionName: 'myapp'));
+```
+
+**Changes:**
+- New `BoxCollectionConfig` class with path, cipher, boxNames, includeMeta
+- `HHiveCore.registerCollection()` for explicit collection config
+- `register()` auto-creates BoxCollectionConfig if not pre-registered
+- Collection config path/cipher takes precedence over globals
+- 20 new tests (14 unit + 6 integration)
 
 ## Recent: README Conventions Documented (2026-02-02)
 

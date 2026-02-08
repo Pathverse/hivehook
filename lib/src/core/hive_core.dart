@@ -1,6 +1,7 @@
 import 'package:hive_ce/hive.dart';
 import 'package:hihook/src/hook/hook.dart';
 
+import 'box_collection_config.dart';
 import 'hive_config.dart';
 import '../store/hbox_store.dart';
 
@@ -112,11 +113,13 @@ class HHiveCore {
   // --- State ---
 
   static final Map<String, HiveConfig> _configs = {};
+  static final Map<String, BoxCollectionConfig> _collectionConfigs = {};
   static final Map<String, HBoxStore> _stores = {};
   static final Map<String, BoxCollection> _collections = {};
   static final Map<String, CollectionBox<dynamic>> _openedBoxes = {};
   static final Set<int> _registeredAdapterTypeIds = {};
   static final Set<String> _openedCollectionNames = {};
+  static final Map<String, bool> _collectionMetaRequired = {};
   static bool _initialized = false;
   static String? _effectiveInitPath;
 
@@ -129,6 +132,46 @@ class HHiveCore {
   /// Whether a specific BoxCollection has been opened.
   static bool isCollectionOpened(String collectionName) =>
       _openedCollectionNames.contains(collectionName);
+
+  /// Registered collection configurations.
+  static Map<String, BoxCollectionConfig> get collectionConfigs =>
+      Map.unmodifiable(_collectionConfigs);
+
+  /// Register a BoxCollection configuration.
+  ///
+  /// Pre-configures path, cipher, and box names for a collection.
+  /// If not called, collections auto-create with defaults when referenced.
+  ///
+  /// Must be called before [initialize] or before any [register] that
+  /// references this collection.
+  ///
+  /// ```dart
+  /// HHiveCore.registerCollection(BoxCollectionConfig(
+  ///   name: 'myapp',
+  ///   path: '/custom/path',
+  ///   cipher: myCipher,
+  ///   includeMeta: true,
+  /// ));
+  /// ```
+  static void registerCollection(BoxCollectionConfig config) {
+    config.validate();
+
+    if (_openedCollectionNames.contains(config.name)) {
+      throw StateError(
+        'BoxCollection "${config.name}" is already opened. '
+        'Cannot register collection config after opening.',
+      );
+    }
+
+    if (_collectionConfigs.containsKey(config.name)) {
+      throw StateError(
+        'Collection "${config.name}" is already registered. '
+        'Each collection can only be registered once.',
+      );
+    }
+
+    _collectionConfigs[config.name] = config;
+  }
 
   /// Register a configuration.
   ///
@@ -147,13 +190,35 @@ class HHiveCore {
       );
     }
 
-    // For BoxCollection: check if collection is already opened
+    // For BoxCollection: update collection config
     if (config.type == HiveBoxType.boxCollection) {
       if (_openedCollectionNames.contains(config.boxCollectionName)) {
         throw StateError(
           'BoxCollection "${config.boxCollectionName}" is already opened. '
           'Cannot add new boxes to an opened collection.',
         );
+      }
+
+      // Get or create BoxCollectionConfig
+      final collectionName = config.boxCollectionName;
+      var collectionConfig = _collectionConfigs[collectionName];
+      if (collectionConfig == null) {
+        // Auto-create with defaults
+        collectionConfig = BoxCollectionConfig.defaults(collectionName);
+        _collectionConfigs[collectionName] = collectionConfig;
+      }
+
+      // Update box names
+      final updatedBoxNames = {...collectionConfig.boxNames, config.boxName};
+      _collectionConfigs[collectionName] = collectionConfig.copyWith(
+        boxNames: updatedBoxNames,
+      );
+
+      // Track meta requirement
+      if (config.withMeta) {
+        _collectionMetaRequired[collectionName] = true;
+        // Validate meta requirement against collection config
+        collectionConfig.validateMetaRequirement(true);
       }
     }
 
@@ -232,21 +297,31 @@ class HHiveCore {
     // Already opened?
     if (_openedCollectionNames.contains(collectionName)) return;
 
-    // Collect box names (use boxName, not env)
-    final boxNames = <String>{};
-    bool anyMeta = false;
+    // Get collection config (should exist from register() calls)
+    final collectionConfig = _collectionConfigs[collectionName] ??
+        BoxCollectionConfig.defaults(collectionName);
+
+    // Determine whether meta is needed
+    final metaRequired = _collectionMetaRequired[collectionName] ?? false;
+    final includeMeta = collectionConfig.shouldIncludeMeta(metaRequired);
+
+    // Collect box names from collection config + any from HiveConfigs
+    final boxNames = <String>{...collectionConfig.boxNames};
     for (final config in configs) {
       boxNames.add(config.boxName);
-      if (config.withMeta) anyMeta = true;
     }
-    if (anyMeta) boxNames.add('_meta');
+    if (includeMeta) boxNames.add('_meta');
+
+    // Resolve path and cipher (collection config > global defaults)
+    final effectivePath = collectionConfig.path ?? _effectiveInitPath;
+    final effectiveCipher = collectionConfig.cipher ?? HIVE_CIPHER;
 
     // Open collection
     final collection = await BoxCollection.open(
       collectionName,
       boxNames,
-      path: _effectiveInitPath,
-      key: HIVE_CIPHER,
+      path: effectivePath,
+      key: effectiveCipher,
     );
     _collections[collectionName] = collection;
 
@@ -257,7 +332,7 @@ class HHiveCore {
     // Track opened boxes by boxName to share between envs
     final openedDataBoxes = <String, CollectionBox<dynamic>>{};
     CollectionBox<String>? metaBox;
-    if (anyMeta) {
+    if (includeMeta) {
       metaBox = await collection.openBox<String>('_meta');
       _openedBoxes['$collectionName::_meta'] = metaBox;
     }
@@ -370,6 +445,8 @@ class HHiveCore {
   /// Resets all state (for testing).
   static Future<void> reset() async {
     _configs.clear();
+    _collectionConfigs.clear();
+    _collectionMetaRequired.clear();
     _stores.clear();
     _collections.clear();
     _openedBoxes.clear();

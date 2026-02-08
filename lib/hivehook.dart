@@ -51,4 +51,5 @@ export 'package:hihook/interfaces/hi_store.dart';
 export 'src/hhive.dart';
 export 'src/core/hive_core.dart';
 export 'src/core/hive_config.dart';
+export 'src/core/box_collection_config.dart';
 export 'src/store/hbox_store.dart';

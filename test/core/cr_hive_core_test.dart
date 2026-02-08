@@ -264,5 +264,103 @@ void main() {
         expect(config.jsonDecoder, isNull);
       });
     });
+
+    group('BoxCollectionConfig Registration', () {
+      test('registerCollection adds collection config', () async {
+        final collectionName = generateCollectionName();
+        HHiveCore.registerCollection(BoxCollectionConfig(
+          name: collectionName,
+          path: '/custom/path',
+          includeMeta: true,
+        ));
+
+        expect(HHiveCore.collectionConfigs.containsKey(collectionName), isTrue);
+        expect(HHiveCore.collectionConfigs[collectionName]?.path, '/custom/path');
+        expect(HHiveCore.collectionConfigs[collectionName]?.includeMeta, isTrue);
+      });
+
+      test('registerCollection throws on duplicate', () async {
+        final collectionName = generateCollectionName();
+        HHiveCore.registerCollection(BoxCollectionConfig(name: collectionName));
+
+        expect(
+          () => HHiveCore.registerCollection(BoxCollectionConfig(name: collectionName)),
+          throwsA(isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('already registered'),
+          )),
+        );
+      });
+
+      test('register auto-creates BoxCollectionConfig if not pre-registered', () async {
+        final collectionName = generateCollectionName();
+        HHiveCore.register(HiveConfig(
+          env: 'users',
+          boxCollectionName: collectionName,
+        ));
+
+        expect(HHiveCore.collectionConfigs.containsKey(collectionName), isTrue);
+        expect(HHiveCore.collectionConfigs[collectionName]?.isExplicit, isFalse);
+      });
+
+      test('register updates BoxCollectionConfig boxNames', () async {
+        final collectionName = generateCollectionName();
+        HHiveCore.register(HiveConfig(
+          env: 'users',
+          boxName: 'users_box',
+          boxCollectionName: collectionName,
+        ));
+        HHiveCore.register(HiveConfig(
+          env: 'settings',
+          boxName: 'settings_box',
+          boxCollectionName: collectionName,
+        ));
+
+        final collectionConfig = HHiveCore.collectionConfigs[collectionName]!;
+        expect(collectionConfig.boxNames, containsAll(['users_box', 'settings_box']));
+      });
+
+      test('pre-registered BoxCollectionConfig is used when HiveConfig references it', () async {
+        final collectionName = generateCollectionName();
+        HHiveCore.registerCollection(BoxCollectionConfig(
+          name: collectionName,
+          path: '/custom/path',
+          boxNames: {'predeclared_box'},
+        ));
+
+        HHiveCore.register(HiveConfig(
+          env: 'users',
+          boxName: 'users_box',
+          boxCollectionName: collectionName,
+        ));
+
+        final collectionConfig = HHiveCore.collectionConfigs[collectionName]!;
+        expect(collectionConfig.isExplicit, isTrue);
+        expect(collectionConfig.path, '/custom/path');
+        expect(collectionConfig.boxNames, containsAll(['predeclared_box', 'users_box']));
+      });
+
+      test('HiveConfig.withMeta respects BoxCollectionConfig.includeMeta=false conflict', () async {
+        final collectionName = generateCollectionName();
+        HHiveCore.registerCollection(BoxCollectionConfig(
+          name: collectionName,
+          includeMeta: false,
+        ));
+
+        expect(
+          () => HHiveCore.register(HiveConfig(
+            env: 'users',
+            boxCollectionName: collectionName,
+            withMeta: true,
+          )),
+          throwsA(isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('includeMeta=false'),
+          )),
+        );
+      });
+    });
   });
 }

@@ -1,24 +1,12 @@
 # Changelog
 
-## 1.0.0-alpha.3
-
-- improved testing
-
-## 1.0.0-alpha.2
-
-- Added meta hooks for metadata transformation and encryption
-- New events: readMeta, writeMeta, deleteMeta, clearMeta
-- Meta-first pattern for efficient TTL checks before value reads
-- Standalone meta methods: getMeta, putMeta, deleteMeta
-
-
-## 1.0.0-alpha.1
-
+## 1.0.0
 - Rebuilt on HiHook framework for advanced hook composition
-- Environment isolation with scoped key prefixing
+- Environment isolation with scoped key prefixing (`{env}::key`)
 - Lazy BoxCollection opening on first access
-- Simplified configuration API
-- 112 tests passing
+- Meta hooks for metadata transformation and encryption
+- Meta-first pattern for efficient TTL checks before value reads
+- BoxCollectionConfig for per-collection path, cipher, and meta settings
 
 ## 0.2.0
 
