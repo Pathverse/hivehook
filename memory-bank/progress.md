@@ -67,8 +67,9 @@
 | `_openedCollectionNames` tracking | ✅ |
 | `isCollectionOpened()` method | ✅ |
 | Lazy open on `getStore()` | ✅ |
-| Block registration to opened collection | ✅ |
-| BoxCollection tests | ✅ 12 tests |
+| Block new box in opened collection | ✅ |
+| Reuse existing box with new env | ✅ |
+| BoxCollection tests | ✅ 13 tests |
 
 ### ✅ Part 6: Meta Hooks (COMPLETE)
 | Feature | Status |

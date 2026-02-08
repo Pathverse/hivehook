@@ -67,9 +67,9 @@ Per-collection configuration separate from HiveConfig:
 // Pre-configure collection (optional)
 HHiveCore.registerCollection(BoxCollectionConfig(
   name: 'myapp',
-  path: '/custom/path',    // Per-collection path
-  cipher: myCipher,        // Per-collection encryption
-  includeMeta: true,       // null=auto, true=force, false=forbid
+  storagePath: '/custom/path',    // Per-collection path
+  encryptionCipher: myCipher,     // Per-collection encryption
+  includeMeta: true,              // null=auto, true=force, false=forbid
 ));
 
 // HiveConfig references collection (auto-creates if not pre-registered)
@@ -89,8 +89,14 @@ HHiveCore.register(HiveConfig(
 **Resolution order (per-collection > global):**
 | Setting | Resolution |
 |---------|------------|
-| `path` | BoxCollectionConfig.path ?? storagePath |
-| `cipher` | BoxCollectionConfig.cipher ?? encryptionCipher |
+| `storagePath` | BoxCollectionConfig.storagePath ?? HHiveCore.storagePath |
+| `encryptionCipher` | BoxCollectionConfig.encryptionCipher ?? HHiveCore.encryptionCipher |
+
+**Registration constraints (opened BoxCollection):**
+| Scenario | Behavior |
+|----------|----------|
+| New box name | Throws StateError |
+| Existing box name with new env | Allowed (reuses opened box) |
 
 ## Folder Structure
 

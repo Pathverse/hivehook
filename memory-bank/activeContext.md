@@ -38,8 +38,8 @@ Added per-collection configuration separate from HiveConfig:
 // Pre-configure collection (optional)
 HHiveCore.registerCollection(BoxCollectionConfig(
   name: 'myapp',
-  path: '/custom/path',
-  cipher: myCipher,
+  storagePath: '/custom/path',
+  encryptionCipher: myCipher,
   includeMeta: true,  // null=auto, true=force, false=forbid
 ));
 
@@ -48,10 +48,11 @@ HHiveCore.register(HiveConfig(env: 'users', boxCollectionName: 'myapp'));
 ```
 
 **Changes:**
-- New `BoxCollectionConfig` class with path, cipher, boxNames, includeMeta
+- New `BoxCollectionConfig` class with storagePath, encryptionCipher, boxNames, includeMeta
 - `HHiveCore.registerCollection()` for explicit collection config
 - `register()` auto-creates BoxCollectionConfig if not pre-registered
-- Collection config path/cipher takes precedence over globals
+- Collection config storagePath/encryptionCipher takes precedence over globals
+- Registration constraint: new box = blocked, existing box = allowed (reuses)
 - 20 new tests (14 unit + 6 integration)
 
 ## Recent: README Conventions Documented (2026-02-02)
@@ -198,6 +199,6 @@ await h2.put('key', 'b');  // Stored as v2::key
 - [x] Test file cleanup automation
 - [x] Path parameter for initialize()
 - [x] Test isolation (temp directory)
-- [ ] TTL/LRU plugin integration
+- [x] TTL/LRU plugin integration
 - [ ] Web debug support
-- [ ] HiveBoxType.box implementation
+- [x] HiveBoxType.box implementation
