@@ -1,244 +1,204 @@
+# Encryption Support (hive_ce)
+
+Up to the most recent hive_ce version (2.19.3 and current), BoxCollection on web still does **not** support built-in encryption (HiveCipher is ignored). Regular boxes on web **do** support encryption. Application-level encryption via meta hooks is the only cross-platform solution for BoxCollection.
+
 # Active Context
 
-## Current Status
-✅ Stable - All tests passing (51 tests)
+## Current Status (Feb 8, 2026)
 
-## Current Focus
-- System feature-complete and stable
-- Performance validated: exception overhead ~1-2μs per call
-- No active blockers
-- Version 0.2.0 released with storage optimizations
+### ✅ 147 Tests Passing
 
-## Recent Changes (Last 3)
+Core implementation complete with env isolation, lazy BoxCollection opening, **meta hooks**, **path parameter**, **test isolation**, **BoxCollectionConfig**, and **individual Box support**.
 
-### Jan 27, 2026: Web Debug & Storage Optimizations (v0.2.0)
-- **Consolidated Meta Box**: Single `_meta` box with namespaced keys (`{env}::{key}`) instead of per-environment boxes
-- **Web Debug Mode**: New `HHiveCore.DEBUG_OBJ` flag (auto-detects via `kDebugMode`) stores original objects to `window.hiveDebug` JS object (web only) - fully inspectable in browser DevTools without serialization
-- **Conditional Compilation**: Uses `web_debug.dart` with stub/web implementations for platform-specific behavior
-- **New Example App**: Complete rewrite with multi-file structure, sidebar navigation, result log, and test panels for Basic/TTL/LRU/JSON/Combo/Custom testing
+## Recent: Individual Box Support (2026-02-08)
 
-### Dec 8: Cache Control & Utility Improvements
-Added `cacheOnNullValues` parameter to `ifNotCached` and `ifNotCachedStatic` methods, allowing control over whether null results should be cached. Added static `clearAll()` method to clear all data across environments. Changed `usesMeta` default from `false` to `true` for better metadata support out-of-the-box. [Details](details/ac_recentChange_dec8CacheControl.md)
+Implemented HiveBoxAdapter pattern for supporting both BoxCollection and regular Box:
 
-### Nov 28: Exception Performance Validation
-Benchmarked `HHCtrlException` overhead: ~1-2μs per throw/catch. Confirmed exception-based control flow is performant and appropriate. Result pattern would save only ~2μs while adding boilerplate. Database I/O dominates (100μs-10ms+), making exception overhead negligible.
-
-## Current Architecture
-
-### Layer Responsibilities (IMPORTANT)
-
-```
-┌─────────────────────────────────────────────┐
-│  HHive (API Layer)                          │
-│  Responsibility:                            │
-│  - Emit ACTION events                       │
-│    (valueRead, valueWrite, onDelete, etc.)  │
-│  - Handle control flow exceptions           │
-│  - User-facing API                          │
-└─────────────────┬───────────────────────────┘
-                  │
-                  ▼
-┌─────────────────────────────────────────────┐
-│  HHCtxDirectAccess (Access Layer)           │
-│  Responsibility:                            │
-│  - Emit SERIALIZATION events only           │
-│    (onValueSerialize, onValueDeserialize)   │
-│  - Direct box access                        │
-│  - NO ACTION EVENTS                         │
-└─────────────────┬───────────────────────────┘
-                  │
-                  ▼
-┌─────────────────────────────────────────────┐
-│  Hive (Storage)                             │
-└─────────────────────────────────────────────┘
-```
-
-**Critical Rule**: `HHCtxDirectAccess` must NEVER emit action events. This prevents infinite loops.
-
-## Next Steps / TODO
-
-### Potential Improvements
-- [ ] Add query/filter hooks for read operations
-- [ ] Batch operations with context-aware hooks (see progress.md for design)
-- [ ] Add performance monitoring hooks
-- [ ] Create hook composition utilities
-- [ ] Add hook debugging tools
-- [ ] Consider adding hook dependency resolution
-
-### Documentation
-- [ ] Add comprehensive API documentation
-- [ ] Create hook cookbook with common patterns
-- [ ] Add migration guide from plain Hive
-- [ ] Document performance characteristics
-- [ ] Create troubleshooting guide
-
-### Testing
-- [x] Exception performance benchmarks
-- [ ] Add stress tests for hook chains
-- [ ] Test multi-isolate scenarios
-- [ ] Add mutation testing
-
-## Known Limitations
-
-1. **String-Only Storage**: All values must be serializable to strings
-2. **No Querying**: No built-in query system beyond Hive's basic get/put
-3. **Single Isolate**: Not designed for multi-isolate concurrent access
-4. **Synchronous Hooks**: All hooks must be async, no sync hook support
-5. **No Hook Dependencies**: Hooks can't declare dependencies on other hooks
-
-## Critical Testing Patterns (NEVER REPEAT THESE MISTAKES)
-
-### CRITICAL: Running Tests
-**⚠️ TESTS MUST BE RUN THROUGH `all_tests.dart` ONLY ⚠️**
-
-```bash
-# ✅ CORRECT - Only way to run tests
-dart test test/all_tests.dart
-
-# ❌ WRONG - Will fail with "No config found for env"
-dart test test/crud_test.dart
-dart test test/if_not_cached_test.dart
-```
-
-**Why**: 
-- `all_tests.dart` initializes HHiveCore once for all tests
-- `test_configs.dart` pre-registers ALL env names before initialization
-- Individual test files expect these configs to already exist
-- Running individual test files bypasses initialization → configs don't exist → tests fail
-
-**Exception**: Tests that don't use HHive can run individually (e.g., `exception_benchmark_test.dart`)
-
-### Test Configuration Initialization Pattern
-**Established in**: `test/all_tests.dart`, `test/test_configs.dart`, `test/hooks_test.dart`, `test/control_flow_test.dart`
-
-**THE CORRECT WAY**:
 ```dart
-setUpAll(() async {
-  // Step 1: Create configs BEFORE HHiveCore.initialize()
-  HHImmutableConfig(env: 'test_env', usesMeta: true);
-  
-  // Step 2: Initialize HHiveCore (registers box names)
-  await HHiveCore.initialize();
-});
-
-test('dynamic hooks', () async {
-  final config = HHConfig(
-    env: 'test_env',  // MUST match pre-registered env
-    usesMeta: true,
-    actionHooks: [/* dynamic hooks */],
-  );
-  
-  // Pass mutable config, NOT finalized
-  dangerousReplaceConfig(config);  // ✅ CORRECT
-  
-  final hive = HHive(config: HHImmutableConfig.getInstance('test_env')!);
-  // test...
-});
+// Now works with HiveBoxType.box
+HHiveCore.register(HiveConfig(
+  env: 'users',
+  type: HiveBoxType.box,  // Uses Hive.openBox() instead of BoxCollection
+  withMeta: true,         // Creates {boxName}_meta.hive
+));
 ```
 
-**MISTAKES TO AVOID**:
+**Changes:**
+- New `HiveBoxAdapter` abstract class with CollectionBoxAdapter + RegularBoxAdapter
+- HBoxStore now accepts adapters instead of raw CollectionBox
+- `_createBoxStore()` implemented for regular Box support
+- Removed debug mode settings (kDebugMode, DEBUG_OBJ, isDebugAvailable)
+- 2 new tests for Box type
 
-❌ **Mistake 1**: Not pre-registering env before HHiveCore.initialize()
+## Recent: BoxCollectionConfig (2026-02-08)
+
+Added per-collection configuration separate from HiveConfig:
+
 ```dart
-setUpAll(() async {
-  await HHiveCore.initialize();  // Boxes registered
-});
+// Pre-configure collection (optional)
+HHiveCore.registerCollection(BoxCollectionConfig(
+  name: 'myapp',
+  storagePath: '/custom/path',
+  encryptionCipher: myCipher,
+  includeMeta: true,  // null=auto, true=force, false=forbid
+));
 
-test('...', () async {
-  // This env was never registered!
-  final config = HHConfig(env: 'new_env', usesMeta: true);
-  // Result: "Box with name new_env is not in the known box names"
-});
+// HiveConfig references collection
+HHiveCore.register(HiveConfig(env: 'users', boxCollectionName: 'myapp'));
 ```
 
-❌ **Mistake 2**: Calling `.finalize()` before `dangerousReplaceConfig()`
+**Changes:**
+- New `BoxCollectionConfig` class with storagePath, encryptionCipher, boxNames, includeMeta
+- `HHiveCore.registerCollection()` for explicit collection config
+- `register()` auto-creates BoxCollectionConfig if not pre-registered
+- Collection config storagePath/encryptionCipher takes precedence over globals
+- Registration constraint: new box = blocked, existing box = allowed (reuses)
+- 20 new tests (14 unit + 6 integration)
+
+## Recent: README Conventions Documented (2026-02-02)
+
+Rewrote README.md following pub.dev package conventions (slang reference). Documented rules in systemPatterns.md:
+- Self-contained documentation (inline code, not demo app showcases)
+- Structure: About → Getting Started → API → Features → Configuration
+- No license text in README body (separate LICENSE file)
+
+## Recent: Test File Isolation (2026-02-02)
+
+Fixed test pollution - Hive collection files were being created in project directory instead of temp:
+
+**Changes:**
+- Added `initWithTempPath()` helper for tests that register configs manually
+- Updated all direct `HHiveCore.initialize()` calls in tests to use helpers
+- Tests now use `Directory.systemTemp.path` for Hive storage
+- `_effectiveInitPath` stored in `HHiveCore` and used by `BoxCollection.open()`
+
+**Test helpers:**
 ```dart
-final config = HHConfig(env: 'test_env', usesMeta: true, ...);
-dangerousReplaceConfig(config.finalize());  // WRONG!
-// Result: "Config with env already exists with different settings"
-// Why: dangerousReplaceConfig calls .finalize() internally
+// For tests that need custom registration before init
+await initWithTempPath();
+
+// For simple tests with configs
+await initHiveCore(configs: [...]);
+
+// For single-env tests
+final hive = await createTestHive();
 ```
 
-❌ **Mistake 3**: Creating config in setUpAll that will be dynamically replaced
+## Recent: Path Parameter for initialize() (2026-02-02)
+
+Added optional `path` parameter to `HHiveCore.initialize()` for non-web platforms:
+
 ```dart
-setUpAll(() async {
-  HHImmutableConfig(env: 'test_env', usesMeta: true);  // Empty config
-  await HHiveCore.initialize();
-});
+// Option 1: Pass path directly
+await HHiveCore.initialize(path: '/my/storage/path');
 
-test('...', () async {
-  // Trying to replace with different config
-  final config = HHConfig(env: 'test_env', usesMeta: true, actionHooks: [...]);
-  dangerousReplaceConfig(config);
-  // Can work, but be aware config identity checks may fail if not careful
-});
+// Option 2: Set static field (existing behavior)
+HHiveCore.storagePath = '/my/storage/path';
+await HHiveCore.initialize();
+
+// Option 3: No path for web
+await HHiveCore.initialize();
 ```
 
-**WHY THIS PATTERN EXISTS**:
-1. Hive requires box names registered during `BoxCollection.open()`
-2. Box names come from configs created BEFORE `HHiveCore.initialize()`
-3. `dangerousReplaceConfig()` removes old instance, creates new via `.finalize()`
-4. Tests with dynamic hooks need placeholder configs for box registration
+## Recent: Meta Hooks Implementation (2026-02-02)
 
-**PATTERN VIOLATED**: Plugin tests initially failed with these exact errors until pattern was followed
+Added separate hook pipeline for metadata operations:
 
-## Important Patterns to Remember
+**New Features:**
+- `metaHooks` parameter in HiveConfig for metadata-specific hooks
+- `metaEngine` in HHive for separate meta hook execution
+- New events: `readMeta`, `writeMeta`, `deleteMeta`, `clearMeta`
+- Standalone methods: `getMeta()`, `putMeta()`, `deleteMeta()`
+- **Meta-first pattern**: `readMeta` fires BEFORE `read` for TTL/invalidation checks
 
-### Serialization Hook Pattern
-Hooks receive context, must update payload:
+**Use Cases:**
+- Encrypt/decrypt metadata separately from values
+- TTL checks without decrypting value (efficiency)
+- Audit trails for metadata operations
+- Update metadata without touching value
+
+**Example:**
 ```dart
-// CORRECT
-ctx.payload = ctx.payload.copyWith(value: result);
-result = await hook.deserialize(ctx);
-
-// WRONG - Don't pass value directly, hook signature doesn't support it
-result = await hook.deserialize(result, ctx);
+final hive = await HHive.createFromConfig(HiveConfig(
+  env: 'secure',
+  withMeta: true,
+  metaHooks: [
+    HiHook(
+      uid: 'meta_encryptor',
+      events: ['writeMeta'],
+      handler: (payload, ctx) {
+        final meta = payload.value as Map<String, dynamic>?;
+        // Transform meta...
+        return HiContinue(payload: payload.copyWith(value: encrypted));
+      },
+    ),
+  ],
+));
 ```
 
-### Event Emission Pattern
+## Architecture
+
+```
+User → HHive → HiEngine → HBoxStore → Hive CE
+                              ↓
+                        Keys: {env}::{key}
+                        Box: {boxName}
+```
+
+## HiveConfig Structure
+
 ```dart
-// In HHive (API layer) - OK to emit action events
-await ctx.control.emit(
-  TriggerType.valueRead.name,
-  action: (ctx) async => await ctx.access.storeGet(key),
-  handleCtrlException: true,
-);
-
-// In HHCtxDirectAccess - NEVER emit action events
-// Only emit serialization events
-await ctx.control.emit(
-  TriggerType.onValueDeserialize.name,  // Serialization event OK
-  action: (ctx) async { /* ... */ },
-);
+class HiveConfig {
+  final String env;              // Unique ID (required)
+  final String boxName;          // Physical box (default: env)
+  final List<HiHook> hooks;      // Value hooks
+  final List<HiHook> metaHooks;  // Metadata hooks (NEW)
+  final HiveBoxType type;
+  final bool withMeta;
+  final String boxCollectionName;
+  final HiveStorageMode storageMode;
+  final List<TypeAdapter> typeAdapters;
+  final HiveJsonEncoder? jsonEncoder;
+  final HiveJsonDecoder? jsonDecoder;
+}
 ```
 
-### Control Flow Pattern
+## Usage Example
+
 ```dart
-// In a hook - break early
-ctx.control.breakEarly(returnValue, {'reason': 'cached'});
+// Envs sharing a box (isolated by prefix)
+HHiveCore.register(HiveConfig(env: 'v1', boxName: 'data'));
+HHiveCore.register(HiveConfig(env: 'v2', boxName: 'data'));
+await HHiveCore.initialize();
 
-// Framework catches HHCtrlException and handles it
+final h1 = await HHive.create('v1');
+final h2 = await HHive.create('v2');
+
+await h1.put('key', 'a');  // Stored as v1::key
+await h2.put('key', 'b');  // Stored as v2::key
+// Each sees only its own keys
 ```
 
-## Active Development Notes
+## Recent: Lazy BoxCollection Opening
 
-### Debugging Tips
-1. If you see infinite loops, check that action events aren't emitted in `HHCtxDirectAccess`
-2. If hooks aren't executing, verify they're registered in config and priority is set
-3. If payload.value is wrong in hooks, check that `copyWith` is called before hook invocation
+| Rule | Behavior |
+|------|----------|
+| Opened collection | Cannot register new boxes (throws) |
+| Unopened collection | Opens lazily on first `getStore()` |
+| `HiveBoxType.box` | Can register anytime (future) |
 
-### Code Quality
-- All debug logs are commented out for production
-- Test coverage is comprehensive
-- Linter rules enforced via `analysis_options.yaml`
-- All async operations properly awaited
+**Key additions:**
+- `_openedCollectionNames` - Set tracking locked collections
+- `isCollectionOpened(name)` - Public check method
+- `_openBoxCollection()` - Lazy opening helper
 
-## Recent Learnings
+## Next Steps
 
-1. **Layer Separation is Critical**: Mixing concerns between layers causes infinite recursion
-2. **Context Updates Matter**: Serialization hooks need updated context before execution
-3. **Exception Overhead is Negligible**: ~1-2μs per throw/catch, irrelevant vs database I/O (100μs-10ms+)
-4. **Immutable Configuration**: Prevents runtime bugs and enables safe concurrent access
-5. **Test Isolation**: Each test needs unique environment to avoid interference
-6. **Profile Before Optimizing**: Benchmark showed exceptions are not a bottleneck
-7. **Tests MUST run through all_tests.dart**: Individual test files fail because they need centralized initialization
+- [x] Meta hooks implementation
+- [x] Example app with meta hooks demo
+- [x] Test file cleanup automation
+- [x] Path parameter for initialize()
+- [x] Test isolation (temp directory)
+- [x] TTL/LRU plugin integration
+- [ ] Web debug support
+- [x] HiveBoxType.box implementation

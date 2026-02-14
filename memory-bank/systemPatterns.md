@@ -1,235 +1,215 @@
 # System Patterns
 
-## Architecture Overview
+## Architecture
 
 ```
-┌─────────────────────────────────────────────┐
-│            HHive (API Layer)                │
-│  - User-facing methods (get, put, delete)   │
-│  - Emits action events                      │
-│  - Controls hook execution flow             │
-└─────────────────┬───────────────────────────┘
-                  │
-                  ▼
-┌─────────────────────────────────────────────┐
-│         HHCtx (Context Layer)               │
-│  - HHCtxControl: Hook execution engine      │
-│  - HHCtxDirectAccess: Data access layer     │
-│  - HHCtxData: Runtime data storage          │
-└─────────────────┬───────────────────────────┘
-                  │
-                  ▼
-┌─────────────────────────────────────────────┐
-│         Hive (Storage Layer)                │
-│  - CollectionBox<String> for data (per env) │
-│  - Single shared `_meta` box for metadata   │
-│    (namespaced keys: {env}::{key})          │
-└─────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────┐
-│      Web Debug (window.hiveDebug)           │
-│  - Stores original objects as JS objects    │
-│  - Only on web platform when DEBUG_OBJ=true │
-│  - Keys: {env}::{key}                       │
-│  - Inspectable in browser DevTools console  │
-└─────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│                User Application                  │
+│  hive.put('key', value) / hive.get('key')       │
+└─────────────────────────────────────────────────┘
+                        │
+                        ▼
+┌─────────────────────────────────────────────────┐
+│  HHive (Facade)                                  │
+│   ├── Owns HiEngine (value hooks)               │
+│   ├── Owns metaEngine (meta hooks)              │
+│   ├── Value events: read, write, delete, clear  │
+│   └── Meta events: readMeta, writeMeta,         │
+│                    deleteMeta, clearMeta        │
+└─────────────────────────────────────────────────┘
+                        │
+                        ▼
+┌─────────────────────────────────────────────────┐
+│  HHiveCore (Static Manager)                      │
+│   ├── registerCollection() - collection config  │
+│   ├── register() - unique env, checks opened    │
+│   ├── initialize() - opens registered boxes     │
+│   ├── getStore() - lazy opens if needed         │
+│   ├── isCollectionOpened(name) - check locked   │
+│   └── getHooksFor(env) → [global + config]      │
+└─────────────────────────────────────────────────┘
+                        │
+                        ▼
+┌─────────────────────────────────────────────────┐
+│  HBoxStore (Pure Storage)                        │
+│   ├── Keys: {env}::{key} in {boxName} box       │
+│   ├── Meta: {env}::{key} in _meta box           │
+│   └── Transparent: users see plain keys         │
+└─────────────────────────────────────────────────┘
+                        │
+                        ▼
+┌─────────────────────────────────────────────────┐
+│  Hive CE (BoxCollection)                         │
+│   ├── Data box: {boxName}                       │
+│   └── Meta box: _meta (shared, namespaced)      │
+└─────────────────────────────────────────────────┘
 ```
 
-## Critical Architecture Decision: Layer Separation
+## Key Isolation Pattern
 
-### The Infinite Loop Problem (SOLVED)
-**Problem**: If `HHCtxDirectAccess.storeGet()` emits `valueRead` events, and a hook calls `hive.get()`, it creates:
-```
-storeGet() → emit(valueRead) → hook → hive.get() → storeGet() → [INFINITE LOOP]
-```
-
-**Solution**: Separate action events from data access
-- **HHive methods** emit action events (`valueRead`, `valueWrite`, etc.)
-- **HHCtxDirectAccess methods** only handle serialization (no action events)
-
-This allows hooks to safely call HiveHook methods without recursion.
-
-## Key Components
-
-1. **HHive**: User API, emits action events at boundary
-2. **HHCtxControl**: Executes pre/post hooks by priority, handles `HHCtrlException`
-3. **HHCtxDirectAccess**: Storage access, applies serialization hooks
-4. **Configuration**: Mutable `HHConfig` → `.finalize()` → immutable `HHImmutableConfig`
-
-See [details/sp_architecture_layers.md](details/sp_architecture_layers.md) for detailed component info.
-**Responsibility**: Direct storage access with serialization
-
-**Pattern**:
 ```dart
-Future<dynamic> storeGet(String key) async {
-  final box = await store;
-  final rawResult = await box.get(key);
-  if (rawResult == null) return null;
+// Multiple envs can share same physical box
+HiveConfig(env: 'users_v1', boxName: 'users')
+HiveConfig(env: 'users_v2', boxName: 'users')
 
-  // Terminal deserialization
-  String valueStr = await ctx.control.emit(
-    TriggerType.onValueTDeserialize.name,  // ← Only serialization events
-    action: (ctx) async { /* ... */ },
-  );
+// Storage layout:
+// Box "users":
+//   users_v1::alice → {...}
+//   users_v1::bob → {...}
+//   users_v2::alice → {...}  // Different env, no collision
+```
 
-  // Application serialization
-  final deserializedValue = await ctx.control.emit(
-    TriggerType.onValueDeserialize.name,
-    action: (ctx) async { /* ... */ },
-  );
+## BoxCollectionConfig Pattern
 
-  return deserializedValue;
+Per-collection configuration separate from HiveConfig:
+
+```dart
+// Pre-configure collection (optional)
+HHiveCore.registerCollection(BoxCollectionConfig(
+  name: 'myapp',
+  storagePath: '/custom/path',    // Per-collection path
+  encryptionCipher: myCipher,     // Per-collection encryption
+  includeMeta: true,              // null=auto, true=force, false=forbid
+));
+
+// HiveConfig references collection (auto-creates if not pre-registered)
+HHiveCore.register(HiveConfig(
+  env: 'users',
+  boxCollectionName: 'myapp',
+));
+```
+
+**includeMeta behavior:**
+| Value | Behavior |
+|-------|----------|
+| `null` | Auto-detect from HiveConfig.withMeta |
+| `true` | Always include `_meta` box |
+| `false` | Never include (error if HiveConfig.withMeta conflicts) |
+
+**Resolution order (per-collection > global):**
+| Setting | Resolution |
+|---------|------------|
+| `storagePath` | BoxCollectionConfig.storagePath ?? HHiveCore.storagePath |
+| `encryptionCipher` | BoxCollectionConfig.encryptionCipher ?? HHiveCore.encryptionCipher |
+
+**Registration constraints (opened BoxCollection):**
+| Scenario | Behavior |
+|----------|----------|
+| New box name | Throws StateError |
+| Existing box name with new env | Allowed (reuses opened box) |
+
+## Folder Structure
+
+```
+lib/
+├── hivehook.dart           # Barrel export
+└── src/
+    ├── hhive.dart          # Facade, owns engine
+    ├── core/
+    │   ├── box_collection_config.dart  # Per-collection settings
+    │   ├── hive_config.dart  # HiveConfig with boxName
+    │   └── hive_core.dart    # Static manager
+    └── store/
+        ├── hbox_store.dart   # {env}:: key prefixing
+        └── hive_box_adapter.dart  # Box abstraction
+```
+
+## HiveBoxAdapter Pattern
+
+Abstracts box operations for both CollectionBox and regular Box:
+
+```dart
+abstract class HiveBoxAdapter<E> {
+  Future<E?> get(String key);
+  Future<void> put(String key, E value);
+  Future<void> delete(String key);
+  Future<List<String>> getAllKeys();
+  Future<Map<String, E>> getAllValues();
+}
+
+// Implementations:
+// - CollectionBoxAdapter: wraps CollectionBox
+// - RegularBoxAdapter: wraps Box (Hive.openBox)
+```
+
+**Usage in HBoxStore:**
+```dart
+class HBoxStore {
+  final HiveBoxAdapter<dynamic> box;      // Works with either
+  final HiveBoxAdapter<String>? metaBox;
 }
 ```
 
-**Key Pattern**: Updates `ctx.payload` before calling serialization hooks:
-```dart
-ctx.payload = ctx.payload.copyWith(value: result);
-result = await hook.deserialize(ctx);
+## Naming Conventions
+
+| Prefix | Package | Example |
+|--------|---------|---------|
+| `HH` | hivehook | `HHive`, `HHiveCore` |
+| `Hi` | hihook | `HiHook`, `HiEngine`, `HiStore` |
+| `Hive` | config | `HiveConfig`, `HiveBoxType` |
+
+## Settings Merge
+
+| Setting | Merge |
+|---------|-------|
+| `typeAdapters` | Global + config (all) |
+| `jsonEncoder` | Config ?? global |
+| `hooks` | Global first, then config |
+
+## Storage Modes
+
+- **JSON** (default): `jsonEncode/Decode`, custom via encoder/decoder
+- **Native**: Hive TypeAdapters for complex types
+
+## Event Flow
+
+```
+# Value operations
+hive.put() → engine.emit('write') → hooks → storage
+         → metaEngine.emit('writeMeta') → metaHooks → storage
+
+# Meta-first pattern (read)
+hive.get() → metaEngine.emit('readMeta') → check TTL/invalidation
+          → engine.emit('read') → hooks → return value
 ```
 
-### 4. Configuration System
-**Location**: `lib/core/config.dart`
+## Meta Hooks Pattern
 
-**Pattern**: Immutable configuration with builder
+For meta hooks, metadata is passed as `payload.value`:
 ```dart
-HHConfig (mutable) → .finalize() → HHImmutableConfig (immutable)
-```
-
-**Hook Organization**:
-- `preActionHooks`: Map of event name → list of hooks
-- `postActionHooks`: Map of event name → list of hooks
-- Hooks are sorted by priority (higher = earlier)
-
-### 5. Hook Types
-
-#### Action Hooks
-Execute custom logic around operations:
-```dart
-HActionHook(
-  latches: [HHLatch.pre(triggerType: TriggerType.valueWrite, priority: 10)],
-  action: (ctx) async { /* logic */ },
+HiHook(
+  events: ['writeMeta'],
+  handler: (payload, ctx) {
+    final meta = payload.value as Map<String, dynamic>?;
+    // Transform meta...
+    return HiContinue(payload: payload.copyWith(value: transformed));
+  },
 )
 ```
 
-#### Serialization Hooks
-Transform **store values** during read/write:
-```dart
-SerializationHook(
-  id: 'my_custom_serializer',  // Unique identifier
-  serialize: (ctx) async => /* transform value to string */,
-  deserialize: (ctx) async => /* transform string to value */,
-  forStore: true,  // Only applies to store values, NOT metadata
-)
-```
+## README Documentation Rules
 
-**Important**: `SerializationHook` is **only for store values**. Metadata is always `Map<String, dynamic>` and directly JSON encoded/decoded.
+Package READMEs should be **self-contained documentation**, not demo app showcases.
 
-**ID-Wrapping Pattern** (November 2025):
-- Each SerializationHook has unique `id` string
-- Constructor registers hook in `_registeredHooks` map (throws on duplicate)
-- `storePut()` wraps: `{"_hivehook__id_": hookId, "value": serializedValue}`
-- `storeGet()` parses wrapper, uses hook ID to find exact hook for deserialization
-- Ensures symmetric serialize/deserialize (same hook both directions)
-- Identifier `_hivehook__id_` avoids collision with user properties
+**Structure (following pub.dev conventions like slang):**
 
-**Two levels**:
-1. **Application Hooks**: User-defined transformations (custom serialization)
-2. **Terminal Hooks**: Final transformations (encryption, compression, base64)
+1. **About this library** - Feature bullets + quick usage snippet
+2. **Table of Contents** - Navigation links
+3. **Getting Started** - Step-by-step: dependencies → init → usage
+4. **Core API** - Complete reference with code examples
+5. **Feature sections** - Each major feature with inline examples
+6. **Configuration** - Options tables with types/defaults
+7. **Learn More** - Links to dependencies/related packages
 
-**For Metadata**:
-- No `SerializationHook` applied (metadata is already JSON)
-- Only `TerminalSerializationHook` applied (for encryption/compression of JSON string)
+**Rules:**
+- Code examples are inline, not references to example app
+- Each section teaches usage directly
+- Use tables for configuration options
+- No "Example App" section as primary content
+- No license text in README (LICENSE file exists)
+- Example app exists for interactive demos, not as documentation
 
-### 6. Plugin System
-**Location**: `lib/helper/plugin.dart`
-**Responsibility**: Group and manage related hooks as a unit
-
-**Pattern**:
-```dart
-class HHPlugin {
-  final String name;
-  final String? description;
-  final List<HActionHook> actionHooks;
-  final List<SerializationHook> serializationHooks;
-  final List<TerminalSerializationHook> terminalSerializationHooks;
-}
-```
-
-**Installation**:
-```dart
-// On mutable HHConfig only
-config.installPlugin(plugin);  // Adds all hooks, tracks in map
-config.uninstallPlugin('plugin_name');  // Removes hooks by UID
-
-// On HHImmutableConfig - throws UnsupportedError
-immutableConfig.installPlugin(plugin);  // ❌ ERROR
-```
-
-**Hook UID System**:
-- All hooks extend `BaseHook` which provides auto-incrementing UIDs
-- Format: `'hook_0'`, `'hook_1'`, `'hook_2'`, ...
-- UIDs enable tracking which hooks belong to which plugin
-- Uninstall removes hooks by matching UIDs
-
-## Data Flow
-
-### Write Operation
-```
-User → hive.put(key, value)
-  ↓
-HHive.staticPut()
-  ↓ emit(valueWrite)
-  ↓
-  ├─→ Pre-action hooks
-  ↓
-HHCtxDirectAccess.storePut()
-  ↓ emit(onValueSerialize)
-  ├─→ Application serialization hooks
-  ↓ emit(onValueTSerialize)
-  ├─→ Terminal serialization hooks
-  ↓
-Hive box.put(key, serializedValue)
-  ↓
-  ├─→ Post-action hooks
-  ↓
-Return to user
-```
-
-## Data Flow Patterns
-**Write**: HHive.put → emit(valueWrite) → pre-hooks → storePut → serialize hooks (first match) → wrap with `{"_hivehook__id_": id, "value": data}` → terminal hooks → Hive box.put → post-hooks
-**Read**: HHive.get → emit(valueRead) → pre-hooks → storeGet → terminal deserialize → parse wrapper → find hook by ID → deserialize with matching hook → post-hooks → return
-**Metadata**: Always `Map<String, dynamic>` → JSON encode/decode → terminal hooks only
-
-See [details/sp_pattern_dataflow.md](details/sp_pattern_dataflow.md) for detailed flows.
-
-## Design Patterns Used
-
-1. **Factory Pattern**: `HHive` uses factory constructor for singleton instances per environment
-2. **Context Object**: Rich context passed through hook chain
-3. **Chain of Responsibility**: Hooks execute in sequence, can modify flow
-4. **Strategy Pattern**: Different hook types implement different strategies
-5. **Immutable Configuration**: Configuration finalized before use
-6. **Exception-based Control Flow**: `HHCtrlException` for flow control
-
-## Critical Implementation Details
-
-### Payload Updates in Serialization
-Hooks don't receive value as parameter, they read from context:
-```dart
-// Before calling hook, update payload
-ctx.payload = ctx.payload.copyWith(value: result);
-// Hook reads from ctx.payload.value
-result = await hook.deserialize(ctx);
-```
-
-### Environment Isolation
-Each environment has its own:
-- Configuration instance
-- Hive boxes (data and metadata)
-- Hook registry
-
-### Singleton Management
-- `HHive` instances: One per environment
-- `HHImmutableConfig` instances: One per environment
-- Both use `Map<String, Instance>` for storage
+**Don't:**
+- Point to example files as primary documentation
+- Make README a tour of the demo app
+- Include MIT license text (separate LICENSE file)

@@ -1,44 +1,59 @@
+# Changelog
+
+## 1.0.0
+- Rebuilt on HiHook framework for advanced hook composition
+- Environment isolation with scoped key prefixing (`{env}::key`)
+- Lazy BoxCollection opening on first access
+- Meta hooks for metadata transformation and encryption
+- Meta-first pattern for efficient TTL checks before value reads
+- BoxCollectionConfig for per-collection storagePath, encryptionCipher, and meta settings
+- Individual Box support via HiveBoxType.box
+- HiveBoxAdapter abstraction for unified box operations
+- Registration constraint: new box names blocked when collection opened, existing boxes can be reused
+- 147 tests passing
+
 ## 0.2.0
-* Consolidated metadata into single `_meta` box with namespaced keys (`{env}::{key}`)
-* **Web Debug Mode**: `HHiveCore.DEBUG_OBJ` stores original objects to `window.hiveDebug` (web only, inspectable in DevTools)
-* Revamped example app with multi-panel test interface
+
+- Consolidated metadata into single box with namespaced keys
+- Web debug mode for DevTools inspection
+- Revamped example app
 
 ## 0.1.7
-* bump hive_ce version
+
+- Bump hive_ce version
 
 ## 0.1.6
-* **New Feature**: Added `cacheOnNullValues` option to `ifNotCached` and `ifNotCachedStatic` methods for controlling whether null values should be cached
-* **New Feature**: Added static `clearAll` method to clear all data across all environments
-* **Breaking Change**: `usesMeta` now defaults to `true` (previously `false`)
+
+- Added `cacheOnNullValues` option to `ifNotCached` methods
+- Added static `clearAll` method
+- `usesMeta` now defaults to `true`
 
 ## 0.1.5
-* fixed an issue where payload does not automatically copy env over
+
+- Fixed payload env propagation
 
 ## 0.1.4
-* supported both string and int for ttl plugin key
+
+- TTL plugin accepts string and int keys
 
 ## 0.1.3
-* added iter methods
+
+- Added iteration methods
 
 ## 0.1.2
-* added `ifNotCached` method to `HHive`
+
+- Added `ifNotCached` method
 
 ## 0.1.1
-* **Improved Metadata Handling**: Removed unnecessary metadata serialization hooks (metadata is always `Map<String, dynamic>`)
-* **Bug Fixes**: Fixed metadata serialization to only use JSON encoding and terminal hooks
+
+- Simplified metadata serialization
 
 ## 0.1.0
-* Initial release of HiveHook
-* Hook system for intercepting Hive operations (pre/post execution)
-* Plugin architecture for composable, reusable middleware
-* Action hooks for validation, logging, and custom logic
-* Serialization hooks for data transformation (encryption, compression, JSON)
-* Built-in TTL plugin for automatic data expiration
-* Built-in LRU plugin for size-limited caching with automatic eviction
-* Metadata support for storing additional context alongside values
-* Control flow management (break, skip, delete operations)
-* Type-safe API with comprehensive error handling
-* Support for multiple isolated environments
-* Web platform support via Hive CE
-* Interactive web demo showcasing all features
-* Complete test coverage
+
+- Initial release
+- Hook system for intercepting Hive operations
+- Plugin architecture with TTL and LRU built-in
+- Serialization hooks for encryption and compression
+- Metadata support
+- Multiple isolated environments
+- Web platform support
