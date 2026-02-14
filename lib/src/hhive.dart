@@ -169,9 +169,10 @@ class HHive {
   ///
   /// Returns `null` if key doesn't exist or hooks return [HiDelete].
   Future<T?> get<T>(String key) async {
-    // Meta-first: Check metadata before reading value
+    Map<String, dynamic>? metaForRead;
     if (config.withMeta) {
       final storedMeta = await _store.getMeta(key);
+      metaForRead = storedMeta;
       final metaPayload = HiPayload<dynamic>(
         key: key,
         value: storedMeta,
@@ -184,30 +185,31 @@ class HHive {
         metaPayload,
       );
 
-      // HiDelete on meta = delete both value and meta, return null
       if (metaResult is HiDelete) {
         await _store.delete(key);
         await _store.deleteMeta(key);
         return null;
       }
 
-      // HiBreak on meta = return break value, skip reading value
       if (metaResult is HiBreak) {
         return metaResult.returnValue as T?;
       }
     }
 
-    // Read value from store
     final storedValue = await _store.get(key);
-
     final payload = HiPayload<dynamic>(
       key: key,
       value: storedValue,
       env: env,
-      metadata: {'store': _store},
+      metadata: {'store': _store, if (metaForRead != null) 'meta': metaForRead},
     );
 
-    final result = await engine.emit<dynamic, dynamic>('read', payload);
+    final dataTracked = <String, dynamic>{};
+    final result = await engine.emit<dynamic, dynamic>(
+      'read',
+      payload,
+      outDataTracked: dataTracked,
+    );
 
     // Check for HiDelete or HiBreak
     if (result is HiDelete) {
@@ -218,6 +220,14 @@ class HHive {
 
     if (result is HiBreak) {
       return result.returnValue as T?;
+    }
+
+    // Persist meta updated by value-engine hooks (e.g. LRU touch last_accessed)
+    if (config.withMeta) {
+      final updatedMeta = dataTracked['meta'] as Map<String, dynamic>?;
+      if (updatedMeta != null && updatedMeta.isNotEmpty) {
+        await putMeta(key, updatedMeta);
+      }
     }
 
     // Get potentially transformed value from result
@@ -357,22 +367,25 @@ class HHive {
       env: env,
       metadata: {'store': _store},
     );
-
+    final dataTracked = <String, dynamic>{};
     final metaResult = await metaEngine.emit<dynamic, dynamic>(
       'writeMeta',
       metaPayload,
+      outDataTracked: dataTracked,
     );
 
     if (metaResult is HiBreak || metaResult is HiDelete) {
       return;
     }
 
-    // Get potentially transformed meta
-    final finalMeta = metaResult is HiContinue && metaResult.payload != null
-        ? metaResult.payload!.value as Map<String, dynamic>?
-        : meta;
+    final finalMeta =
+        dataTracked['meta'] as Map<String, dynamic>? ??
+        (metaResult is HiContinue && metaResult.payload != null
+            ? metaResult.payload!.value as Map<String, dynamic>?
+            : null) ??
+        meta;
 
-    if (finalMeta != null) {
+    if (finalMeta.isNotEmpty) {
       await _store.putMeta(key, finalMeta);
     }
   }
@@ -411,11 +424,7 @@ class HHive {
   /// 4. Store the meta
   ///
   /// Optionally stores metadata alongside the value.
-  Future<void> put<T>(
-    String key,
-    T value, {
-    Map<String, dynamic>? meta,
-  }) async {
+  Future<void> put<T>(String key, T value, {Map<String, dynamic>? meta}) async {
     // Load existing meta if we need to merge
     Map<String, dynamic>? existingMeta;
     if (config.withMeta) {
@@ -426,10 +435,7 @@ class HHive {
       key: key,
       value: value,
       env: env,
-      metadata: {
-        'meta': meta ?? existingMeta,
-        'store': _store,
-      },
+      metadata: {'meta': meta ?? existingMeta, 'store': _store},
     );
 
     final result = await engine.emit<dynamic, dynamic>('write', payload);
@@ -456,31 +462,35 @@ class HHive {
     // Handle metadata via metaEngine
     if (config.withMeta) {
       // Determine the meta to write (from hook or parameter)
-      final metaToWrite = result is HiContinue && result.payload?.metadata != null
+      final metaToWrite =
+          result is HiContinue && result.payload?.metadata != null
           ? result.payload!.metadata!['meta'] as Map<String, dynamic>?
           : meta;
 
       if (metaToWrite != null) {
-        // Emit writeMeta event for meta transformation (e.g., encryption)
+        // Emit writeMeta; hooks can mutate context.dataTracked and we read it back
         final metaPayload = HiPayload<dynamic>(
           key: key,
           value: metaToWrite,
           env: env,
           metadata: {'store': _store},
         );
-
+        final dataTracked = <String, dynamic>{};
         final metaResult = await metaEngine.emit<dynamic, dynamic>(
           'writeMeta',
           metaPayload,
+          outDataTracked: dataTracked,
         );
 
-        // Get potentially transformed meta
         if (metaResult is! HiBreak && metaResult is! HiDelete) {
-          final finalMeta = metaResult is HiContinue && metaResult.payload != null
-              ? metaResult.payload!.value as Map<String, dynamic>?
-              : metaToWrite;
+          final finalMeta =
+              dataTracked['meta'] as Map<String, dynamic>? ??
+              (metaResult is HiContinue && metaResult.payload != null
+                  ? metaResult.payload!.value as Map<String, dynamic>?
+                  : null) ??
+              metaToWrite;
 
-          if (finalMeta != null) {
+          if (finalMeta.isNotEmpty) {
             await _store.putMeta(key, finalMeta);
           }
         }

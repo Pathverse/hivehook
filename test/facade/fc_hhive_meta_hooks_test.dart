@@ -1,6 +1,7 @@
 @TestOn('vm')
 library;
 
+import 'package:hihook/src/context/context.dart';
 import 'package:hivehook/hivehook.dart';
 import 'package:test/test.dart';
 
@@ -38,15 +39,17 @@ void main() {
           },
         );
 
-        await initHiveCore(configs: [
-          HiveConfig(
-            env: 'test',
-            boxCollectionName: generateCollectionName(),
-            withMeta: true,
-            hooks: [loggingHook],
-            metaHooks: [metaLoggingHook],
-          ),
-        ]);
+        await initHiveCore(
+          configs: [
+            HiveConfig(
+              env: 'test',
+              boxCollectionName: generateCollectionName(),
+              withMeta: true,
+              hooks: [loggingHook],
+              metaHooks: [metaLoggingHook],
+            ),
+          ],
+        );
 
         final hive = await HHive.create('test');
 
@@ -80,15 +83,17 @@ void main() {
           },
         );
 
-        await initHiveCore(configs: [
-          HiveConfig(
-            env: 'test',
-            boxCollectionName: generateCollectionName(),
-            withMeta: true,
-            hooks: [loggingHook],
-            metaHooks: [metaLoggingHook],
-          ),
-        ]);
+        await initHiveCore(
+          configs: [
+            HiveConfig(
+              env: 'test',
+              boxCollectionName: generateCollectionName(),
+              withMeta: true,
+              hooks: [loggingHook],
+              metaHooks: [metaLoggingHook],
+            ),
+          ],
+        );
 
         final hive = await HHive.create('test');
 
@@ -119,15 +124,17 @@ void main() {
           },
         );
 
-        await initHiveCore(configs: [
-          HiveConfig(
-            env: 'test',
-            boxCollectionName: generateCollectionName(),
-            withMeta: true,
-            hooks: [loggingHook],
-            metaHooks: [metaLoggingHook],
-          ),
-        ]);
+        await initHiveCore(
+          configs: [
+            HiveConfig(
+              env: 'test',
+              boxCollectionName: generateCollectionName(),
+              withMeta: true,
+              hooks: [loggingHook],
+              metaHooks: [metaLoggingHook],
+            ),
+          ],
+        );
 
         final hive = await HHive.create('test');
 
@@ -160,15 +167,17 @@ void main() {
           },
         );
 
-        await initHiveCore(configs: [
-          HiveConfig(
-            env: 'test',
-            boxCollectionName: generateCollectionName(),
-            withMeta: true,
-            hooks: [loggingHook],
-            metaHooks: [metaLoggingHook],
-          ),
-        ]);
+        await initHiveCore(
+          configs: [
+            HiveConfig(
+              env: 'test',
+              boxCollectionName: generateCollectionName(),
+              withMeta: true,
+              hooks: [loggingHook],
+              metaHooks: [metaLoggingHook],
+            ),
+          ],
+        );
 
         final hive = await HHive.create('test');
 
@@ -194,14 +203,16 @@ void main() {
           },
         );
 
-        await initHiveCore(configs: [
-          HiveConfig(
-            env: 'test',
-            boxCollectionName: generateCollectionName(),
-            withMeta: true,
-            metaHooks: [metaLoggingHook],
-          ),
-        ]);
+        await initHiveCore(
+          configs: [
+            HiveConfig(
+              env: 'test',
+              boxCollectionName: generateCollectionName(),
+              withMeta: true,
+              metaHooks: [metaLoggingHook],
+            ),
+          ],
+        );
 
         final hive = await HHive.create('test');
 
@@ -226,14 +237,16 @@ void main() {
           },
         );
 
-        await initHiveCore(configs: [
-          HiveConfig(
-            env: 'test',
-            boxCollectionName: generateCollectionName(),
-            withMeta: true,
-            metaHooks: [metaLoggingHook],
-          ),
-        ]);
+        await initHiveCore(
+          configs: [
+            HiveConfig(
+              env: 'test',
+              boxCollectionName: generateCollectionName(),
+              withMeta: true,
+              metaHooks: [metaLoggingHook],
+            ),
+          ],
+        );
 
         final hive = await HHive.create('test');
 
@@ -260,14 +273,16 @@ void main() {
           },
         );
 
-        await initHiveCore(configs: [
-          HiveConfig(
-            env: 'test',
-            boxCollectionName: generateCollectionName(),
-            withMeta: true,
-            metaHooks: [metaLoggingHook],
-          ),
-        ]);
+        await initHiveCore(
+          configs: [
+            HiveConfig(
+              env: 'test',
+              boxCollectionName: generateCollectionName(),
+              withMeta: true,
+              metaHooks: [metaLoggingHook],
+            ),
+          ],
+        );
 
         final hive = await HHive.create('test');
 
@@ -303,14 +318,16 @@ void main() {
           },
         );
 
-        await initHiveCore(configs: [
-          HiveConfig(
-            env: 'test',
-            boxCollectionName: generateCollectionName(),
-            withMeta: true,
-            metaHooks: [encryptMetaHook],
-          ),
-        ]);
+        await initHiveCore(
+          configs: [
+            HiveConfig(
+              env: 'test',
+              boxCollectionName: generateCollectionName(),
+              withMeta: true,
+              metaHooks: [encryptMetaHook],
+            ),
+          ],
+        );
 
         final hive = await HHive.create('test');
 
@@ -337,14 +354,16 @@ void main() {
           },
         );
 
-        await initHiveCore(configs: [
-          HiveConfig(
-            env: 'test',
-            boxCollectionName: generateCollectionName(),
-            withMeta: true,
-            metaHooks: [decryptMetaHook],
-          ),
-        ]);
+        await initHiveCore(
+          configs: [
+            HiveConfig(
+              env: 'test',
+              boxCollectionName: generateCollectionName(),
+              withMeta: true,
+              metaHooks: [decryptMetaHook],
+            ),
+          ],
+        );
 
         final hive = await HHive.create('test');
 
@@ -383,15 +402,17 @@ void main() {
           },
         );
 
-        await initHiveCore(configs: [
-          HiveConfig(
-            env: 'test',
-            boxCollectionName: generateCollectionName(),
-            withMeta: true,
-            hooks: [readHook],
-            metaHooks: [ttlHook],
-          ),
-        ]);
+        await initHiveCore(
+          configs: [
+            HiveConfig(
+              env: 'test',
+              boxCollectionName: generateCollectionName(),
+              withMeta: true,
+              hooks: [readHook],
+              metaHooks: [ttlHook],
+            ),
+          ],
+        );
 
         final hive = await HHive.create('test');
 
@@ -433,15 +454,17 @@ void main() {
           },
         );
 
-        await initHiveCore(configs: [
-          HiveConfig(
-            env: 'test',
-            boxCollectionName: generateCollectionName(),
-            withMeta: true,
-            hooks: [readHook],
-            metaHooks: [cacheHook],
-          ),
-        ]);
+        await initHiveCore(
+          configs: [
+            HiveConfig(
+              env: 'test',
+              boxCollectionName: generateCollectionName(),
+              withMeta: true,
+              hooks: [readHook],
+              metaHooks: [cacheHook],
+            ),
+          ],
+        );
 
         final hive = await HHive.create('test');
 
@@ -481,15 +504,17 @@ void main() {
           },
         );
 
-        await initHiveCore(configs: [
-          HiveConfig(
-            env: 'test',
-            boxCollectionName: generateCollectionName(),
-            withMeta: true,
-            hooks: [valueHook],
-            metaHooks: [metaHook],
-          ),
-        ]);
+        await initHiveCore(
+          configs: [
+            HiveConfig(
+              env: 'test',
+              boxCollectionName: generateCollectionName(),
+              withMeta: true,
+              hooks: [valueHook],
+              metaHooks: [metaHook],
+            ),
+          ],
+        );
 
         final hive = await HHive.create('test');
 
@@ -501,8 +526,52 @@ void main() {
         expect(valueEvents, ['key1', 'key1', 'key1']); // write, read, delete
 
         // Meta hooks triggered separately
-        expect(metaEvents, ['key1', 'key1', 'key1']); // writeMeta, readMeta, deleteMeta
+        expect(metaEvents, [
+          'key1',
+          'key1',
+          'key1',
+        ]); // writeMeta, readMeta, deleteMeta
       });
+
+      test(
+        'get() persists value-engine updated meta (outDataTracked + putMeta)',
+        () async {
+          final touchHook = HiHook<dynamic, dynamic>(
+            uid: 'test:touch',
+            events: ['read'],
+            handler: (payload, ctx) {
+              final context = ctx as HiContext;
+              final meta = Map<String, dynamic>.from(
+                payload.metadata?['meta'] as Map<String, dynamic>? ?? {},
+              );
+              meta['last_accessed'] = 12345;
+              context.dataTracked['meta'] = meta;
+              return const HiContinue();
+            },
+          );
+
+          await initHiveCore(
+            configs: [
+              HiveConfig(
+                env: 'test',
+                boxCollectionName: generateCollectionName(),
+                withMeta: true,
+                hooks: [touchHook],
+              ),
+            ],
+          );
+
+          final hive = await HHive.create('test');
+          await hive.put('key1', 'value1', meta: {'ttl': 3600});
+
+          await hive.get('key1');
+
+          final storedMeta = await hive.store.getMeta('key1');
+          expect(storedMeta, isNotNull);
+          expect(storedMeta!['last_accessed'], 12345);
+          expect(storedMeta['ttl'], 3600);
+        },
+      );
 
       test('hooks list does not receive meta events', () async {
         final allEvents = <String>[];
@@ -516,14 +585,16 @@ void main() {
           },
         );
 
-        await initHiveCore(configs: [
-          HiveConfig(
-            env: 'test',
-            boxCollectionName: generateCollectionName(),
-            withMeta: true,
-            hooks: [catchAllHook], // Only in hooks, not metaHooks
-          ),
-        ]);
+        await initHiveCore(
+          configs: [
+            HiveConfig(
+              env: 'test',
+              boxCollectionName: generateCollectionName(),
+              withMeta: true,
+              hooks: [catchAllHook], // Only in hooks, not metaHooks
+            ),
+          ],
+        );
 
         final hive = await HHive.create('test');
 
