@@ -1,5 +1,3 @@
-# Changelog
-
 ## 1.0.0
 - Rebuilt on HiHook framework for advanced hook composition
 - Environment isolation with scoped key prefixing (`{env}::key`)
@@ -10,7 +8,7 @@
 - Individual Box support via HiveBoxType.box
 - HiveBoxAdapter abstraction for unified box operations
 - Registration constraint: new box names blocked when collection opened, existing boxes can be reused
-- 147 tests passing
+- Improve meta hook interoperability and persist tracked meta updates
 
 ## 0.2.0
 
